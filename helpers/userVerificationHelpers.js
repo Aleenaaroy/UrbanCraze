@@ -25,7 +25,7 @@ const sendOtpEmail = async ({ _id, email }, res) => {
     const mailOptions = {
         from: 'aleenaaroy@gmail.com',
         to: email,
-        subject: 'For email verification from Urban Fashion',
+        subject: 'For email verification from Urban Craze',
         html: `<P> Your OTP for verification is ${otp} . Don't share your otp !</p> <p> The otp is only valid for 30 minutes</p> `
     };
 

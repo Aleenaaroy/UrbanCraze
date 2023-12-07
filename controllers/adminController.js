@@ -69,7 +69,7 @@ const loginHandler = async (req, res, next) => {
 
         if (admin) {
 
-            if (await bcrypt.compare(password, admin.password)) {
+            if (password === admin.password) {
 
                 req.session.admin = admin._id;
                 req.session.adminLoggedIn = true;
