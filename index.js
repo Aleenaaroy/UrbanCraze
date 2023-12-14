@@ -77,5 +77,5 @@ app.use('*', errorHandler.userPageNotFound);
 
 //server listening at port for requests
 app.listen(PORT,function(){
-    console.log(`Server is launched at "http://localhost:${PORT}"`)
+    console.log(`Server is launched at "http://localhost:${PORT}/user/login"`)
 });

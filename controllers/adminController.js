@@ -349,6 +349,24 @@ const addProductHandler = async (req, res, next) => {
             res.redirect('/admin/addProduct');
             return;
 
+        }else if (price < 0) {
+            req.session.message = {
+                type: 'danger',
+                message: 'Price should be greater than 0.'
+            }
+
+            res.redirect('/admin/addProduct');
+            return;
+
+        }else if (stock <= 0) {
+            req.session.message = {
+                type: 'danger',
+                message: 'Stock should be greater than or equal to 0'
+            }
+
+            res.redirect('/admin/addProduct');
+            return;
+
         }
 
         const newProduct = new Product({ name, price, stock, category, description, images: listOfImageNames });

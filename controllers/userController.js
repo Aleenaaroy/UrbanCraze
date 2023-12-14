@@ -40,15 +40,26 @@ const signUpHandler = async (req, res, next) => {
     //regex for checking name and email
     const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)?$/;
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+    const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+,\-./:;<=>?@[\\\]^_`{|}~])(?=.*[a-zA-Z]).{8,}$/;
+    const phoneRegex = /^\d{10}$/;
     try {
         const { name, email, password, phone } = req.body;
-
+        let missing="";
         // validating input data before creating the user
         if (!name || !email || !password || !phone) {
+            if (!name) {
+                missing=missing+ "name ";}
+            if (!email) {
+                missing=missing+ "email ";}
+            if (!password) {
+                missing=missing+ "password ";}
+            if (!phone) {
+                missing=missing+ "phone ";}  
             req.session.message = {
-                type: 'danger',
-                message: 'All Fields Are Mandatory'
-            }
+                    type: 'danger',
+                    message: `${missing}  fields mandatory`
+                };       
+            
         } else if (!nameRegex.test(name)) {
             req.session.message = {
                 type: 'danger',
@@ -59,8 +70,19 @@ const signUpHandler = async (req, res, next) => {
             req.session.message = {
                 type: 'danger',
                 message: 'Invalid Email: make sure email id is entered correctly'
-            }
+            }}
+        else if (!passwordRegex.test(password)) {
+                req.session.message = {
+                    type: 'danger',
+                    message: 'Invalid Password: should be at least 8 characters long, include at least one digit,lower case,upper case and special character'
+                }
         }
+        else if (!phoneRegex.test(phone)) {
+            req.session.message = {
+                type: 'danger',
+                message: 'Invalid phone: make sure phone number entered correctly'
+            }
+    }
 
         // redirecting with error message if data validation failed 
         if (req.session.message && req.session.message.type === 'danger') {
@@ -95,7 +117,7 @@ const signUpHandler = async (req, res, next) => {
                     } else {
                         req.session.message = {
                             type: 'danger',
-                            message: 'verification failed : try verify your email using : ',
+                            message: 'verification failed : try verify your email',
                             verification: true
                         };
                         res.redirect('/user/signUp');

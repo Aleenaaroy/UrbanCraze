@@ -80,7 +80,7 @@
 
     async function block(data) {
         try {
-            const response = await fetch("http://localhost:2500/admin/blockUser", {
+            const response = await fetch("http://localhost:3000/admin/blockUser", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -125,7 +125,7 @@
 
     async function deleteProduct(data) {
         try {
-            const response = await fetch("http://localhost:2500/admin/deleteProduct/" + data, {
+            const response = await fetch("http://localhost:3000/admin/deleteProduct/" + data, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -165,7 +165,7 @@
 
     async function deleteCategory(data) {
         try {
-            const response = await fetch("http://localhost:2500/admin/deleteCategory/" + data, {
+            const response = await fetch("http://localhost:3000/admin/deleteCategory/" + data, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
