@@ -26,7 +26,7 @@ const sendOtpEmail = async ({ _id, email }, res) => {
         from: 'aleenaaroy@gmail.com',
         to: email,
         subject: 'For email verification from Urban Craze',
-        html: `<P> Your OTP for verification is ${otp} . Don't share your otp !</p> <p> The otp is only valid for 30 minutes</p> `
+        html: `<P> Your OTP for verification is ${otp} . Don't share your otp !</p> <p> The otp is only valid for 5 minutes</p> `
     };
 
     const hashedOtp = await bcrypt.hash(otp, 10);
@@ -44,7 +44,7 @@ const sendOtpEmail = async ({ _id, email }, res) => {
         userId: _id,
         otp: hashedOtp,
         createdAt: Date.now(),
-        expiresAt: Date.now() + 1800000,
+        expiresAt: Date.now() + 300000,
 
     })
 
