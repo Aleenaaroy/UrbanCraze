@@ -24,13 +24,21 @@
         <main class="main my-5">
             <div class="container">
 
-                <form class="container  w-50 my-5" action="/admin/addProduct" method="post"
+                <h2 class="text-center">Enter New Product Details</h2>
+
+                <form class="container  w-50 my-5" id="myForm" action="/admin/addProduct" method="post"
                     enctype="multipart/form-data">
 
 
                     <div class="form-outline mb-4">
                         <input type="text" id="product-name" class="form-control" name="name" required />
                         <label class="form-label mt-2" for="product-name">Product name </label>
+                    </div>
+
+                    <div class="form-outline mb-4">
+                        <input type="number" id="groupingID" class="form-control" name="groupingID" required
+                            title=" id for grouping product variants" />
+                        <label class="form-label mt-2" for="groupingID">Grouping ID </label>
                     </div>
 
                     <div class="form-outline mb-4 d-flex flex-column ">
@@ -52,6 +60,24 @@
                         <label class="   mt-2" for="category">Category</label>
 
                     </div>
+
+
+                    <div class="form-outline mb-4">
+
+                        <input type="text" id="size" class="form-control" name="size" required />
+                        <label class="form-label mt-2" for="size">Size</label>
+
+                    </div>
+
+                    <div class="form-outline mb-4">
+
+                        <input type="text" id="color" class="form-control" name="color" required />
+
+                        <label class="form-label mt-2" for="color">Color</label>
+
+                    </div>
+
+
 
                     <div class="form-outline mb-4">
 
@@ -141,7 +167,7 @@
                     <!-- fourth image -->
 
 
-                    <div class="input-group mb-4">
+                    <!-- <div class="input-group mb-4">
                         <div class="input-group-prepend">
                             <span class="input-group-text" id="fourthIMG">Upload</span>
                         </div>
@@ -162,7 +188,7 @@
                                 aria-describedby="fourthIMGThumbnail" name="fourthImgThumbnail" required>
                             <label class="custom-file-label" for="fourthImgThumbnail"> Fourth Image Thumbnail</label>
                         </div>
-                    </div>
+                    </div> -->
 
 
 
@@ -172,8 +198,9 @@
 
 
 
-                    <div class="form-outline mb-2">
-                        <textarea name="description" id="description" cols="49" rows="5" required></textarea>
+                    <div class="form-outline mb-2 w-100">
+                        <textarea class=" w-100" style="width: auto;" name="description" id="description"
+                            required></textarea>
                         <label class="form-label mt-2" for="description">Description</label>
                     </div>
 
@@ -200,5 +227,7 @@
 
 
         <%- include('../admin/adminFooter.ejs') %>
+
+            <script src="/js/admin/addProduct.js"></script>
 
             <%- include('../layouts/footer.ejs') %>

@@ -2,13 +2,18 @@ const userPageNotFound = (req, res, next) => {
     res.render('users/404.ejs');
 }
 
+const userErrorHandler = (err, req, res, next) => {
+
+    console.log(err)
+
+    res.render('users/error.ejs')
+
+
+}
 const adminPageNotFound = (req, res, next) => {
     res.render('admin/404.ejs');
-}
 
-const userErrorHandler = (err, req, res, next) => {
-    console.log(err)
-    res.render('users/error.ejs');
+
 }
 
 const adminErrorHandler = (err, req, res, next) => {

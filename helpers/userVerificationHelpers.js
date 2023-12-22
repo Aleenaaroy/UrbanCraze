@@ -37,6 +37,9 @@ const sendOtpEmail = async ({ _id, email }, res) => {
 
         const deletedOldOtpData = await otpData.deleteOne({ userId: _id });
 
+
+        // redirect if deletion failed
+
     }
 
     const otpdata = new otpData({
