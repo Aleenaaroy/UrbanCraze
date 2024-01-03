@@ -94,6 +94,25 @@ const renderSearchAndBuy = async (req, res, next) => {
 
 }
 
+// ! render the home page 
+
+const renderHomePage = async (req, res, next) => {
+
+    try {
+
+        const products = await Product.find()
+
+            .limit(8)
+            .exec();
+
+        res.render('users/home.ejs', { products });
+
+    }
+    catch (err) {
+        next(err);
+    }
+}
+
 
 //! render product details page 
 
@@ -141,7 +160,9 @@ const renderProductDetailsPage = async (req, res, next) => {
 
         const product = await Product.findOne(filterQuery).lean();
 
+        const CategoryID = product.category;
 
+        const CategoryData = await Category.findById(CategoryID);
 
 
         const groupOfProducts = await Product.find({ groupingID }).lean();
@@ -158,7 +179,7 @@ const renderProductDetailsPage = async (req, res, next) => {
 
 
 
-        res.render('users/productDetails.ejs', { product, currentColor: color, currentSize: size, colorList, sizeList, variants });
+        res.render('users/productDetails.ejs', { product, currentColor: color, currentSize: size, colorList, sizeList, variants, category: CategoryData });
 
         return;
     }
@@ -529,8 +550,12 @@ const renderCheckOutPage = async (req, res, next) => {
 
                 $addFields: {
                     totalPriceOfTheProduct: {
-                        $multiply: ["$quantity", "$price"]
-                    }
+                        $cond: {
+                            if: { $eq: ['$cartProductData.onOffer', true] },
+                            then: { $multiply: ["$quantity", '$cartProductData.offerPrice'] },
+                            else: { $multiply: ["$quantity", "$price"] },
+                        },
+                    },
                 }
             },
 
@@ -566,11 +591,34 @@ const renderCheckOutPage = async (req, res, next) => {
                         newRoot: '$cartItems'
                     }
                 }, {
+                    $lookup: {
+                        from: 'products',
+                        localField: 'product',
+                        foreignField: '_id',
+                        as: 'cartProductData'
+
+                    }
+                }, {
+                    $replaceRoot: {
+                        newRoot: {
+                            $mergeObjects: [
+                                { _id: "$_id", cartID: "$cartID", product: "$product", quantity: "$quantity", price: "$price", __v: "$__v" },
+                                { cartProductData: { $arrayElemAt: ["$cartProductData", 0] } }
+                            ]
+                        }
+                    }
+                },
+
+                {
 
                     $addFields: {
                         totalPriceOfTheProduct: {
-                            $multiply: ["$quantity", "$price"]
-                        }
+                            $cond: {
+                                if: { $eq: ['$cartProductData.onOffer', true] },
+                                then: { $multiply: ["$quantity", '$cartProductData.offerPrice'] },
+                                else: { $multiply: ["$quantity", "$price"] },
+                            },
+                        },
                     }
                 },
                 {
@@ -585,6 +633,7 @@ const renderCheckOutPage = async (req, res, next) => {
             ]).exec()
 
 
+            console.log('itemsInCart\n\n', totalPriceOfCart);
 
             totalPriceOfCart = totalPriceOfCart[0].totalAmount;
 
@@ -612,5 +661,6 @@ module.exports = {
     addToWishListHandler,
     renderWishListPage,
     removeFromWishListHandler,
-    renderCheckOutPage
+    renderCheckOutPage,
+    renderHomePage
 }

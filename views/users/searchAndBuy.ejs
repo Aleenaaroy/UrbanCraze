@@ -12,7 +12,7 @@
                         <div class="breadcrumb__text">
                             <h4>Shop</h4>
                             <div class="breadcrumb__links">
-                                <a href="/">Home</a>
+                                <a href="./index.html">Home</a>
                                 <span>Shop</span>
                             </div>
                         </div>
@@ -124,11 +124,12 @@
 
 
                                     <div class="col-lg-4 col-md-4 col-sm-6 mx-1 pl-0" style="max-width: 262px;">
+
                                         <div class="product__item">
                                             <div click-id="productDetailsLink" group-id="<%=products[i].groupingID%>"
                                                 color-id="<%=products[i].color%>"
                                                 class="product__item__pic set-bg add-hover mt-1" data-id="bg-render"
-                                                data-for-bg="img/productImages/<%=products[i].images.find((img)=>img.toLowerCase().includes('mainimg')) %>"
+                                                data-for-bg="/img/productImages/<%=products[i].images.find((img)=>img.toLowerCase().includes('mainimg')) %>"
                                                 style="background-size: cover;background-position: top;
                                                 background-repeat: no-repeat;">
 
@@ -163,8 +164,30 @@
                                                     <i class="fa fa-star-o"></i>
                                                     <i class="fa fa-star-o"></i>
                                                 </div>
-                                                <h5>Rs.<%=products[i].price%>
-                                                </h5>
+
+                                                <div class="d-flex">
+                                                    <h5 class=" mr-3" <% if(products[i].onOffer &&
+                                                        products[i].rateOfDiscount>0){ %>
+
+
+                                                        style="color:grey;text-decoration: line-through;"
+
+                                                        <%}%>
+
+                                                            >?<%=products[i].price%>
+                                                    </h5>
+
+                                                    <% if(products[i].onOffer && products[i].rateOfDiscount>0){ %>
+
+                                                        <h5>
+                                                            ? <%=products[i].offerPrice%>
+                                                        </h5>
+
+                                                        <%}%>
+
+
+                                                </div>
+
 
 
 

@@ -11,6 +11,7 @@ const Coupon = require('../models/couponModel');
 const Order = require('../models/orderModel');
 const OrderItem = require('../models/orderItemModel');
 const CartItem = require('../models/cartItemModel');
+const Product = require('../models/productModel')
 
 
 const userVerificationHelper = require('../helpers/userVerificationHelpers');
@@ -78,6 +79,8 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
     try {
 
+        console.log('add coupon and items ');
+
         if (!req.session.userID) {
 
             res.status(401).json({ "success": false, "message": "Your session timedOut login to access checkout page" })
@@ -97,9 +100,9 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
         console.log(req.body);
 
-        let rateOfDiscount = null;
+        let rateOfCouponDiscount = null;
 
-        let maximumDiscount = null;
+        let maximumCouponDiscount = null;
 
         let couponID = null
 
@@ -116,8 +119,8 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
                 if (couponData.isActive && (currentDate < expiryDate)) {
 
-                    rateOfDiscount = couponData.rateOfDiscount;
-                    maximumDiscount = couponData.maximumDiscount;
+                    rateOfCouponDiscount = couponData.rateOfDiscount;
+                    maximumCouponDiscount = couponData.maximumDiscount;
                     couponID = couponData._id;
                 }
 
@@ -171,14 +174,104 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
                 $addFields: {
                     totalPriceOfTheProduct: {
-                        $multiply: ["$quantity", "$price"]
-                    }
+                        $cond: {
+                            if: { $eq: ['$cartProductData.onOffer', true] },
+                            then: { $multiply: ["$quantity", '$cartProductData.offerPrice'] },
+                            else: { $multiply: ["$quantity", "$price"] },
+                        },
+                    },
                 }
             },
 
 
 
-        ]).exec()
+        ]).exec();
+
+        const categoryOffers = await Cart.aggregate([{
+            $match: {
+                userID: userID,
+            },
+        }, {
+            $lookup: {
+                from: 'cartitems',
+                localField: 'items',
+                foreignField: '_id',
+                as: 'cartItems',
+            }
+        }, {
+
+            $unwind: "$cartItems"
+
+
+        }, {
+            $replaceRoot: {
+                newRoot: '$cartItems'
+            }
+        }, {
+            $lookup: {
+                from: 'products',
+                localField: 'product',
+                foreignField: '_id',
+                as: 'cartProductData'
+
+            }
+        }, {
+            $replaceRoot: {
+                newRoot: {
+                    $mergeObjects: [
+
+                        { category: { $arrayElemAt: ["$cartProductData.category", 0] } }
+                    ]
+                }
+            }
+        }
+            , {
+            $lookup: {
+                from: 'categories',
+                localField: 'category',
+                foreignField: '_id',
+                as: 'category',
+            }
+        },
+        {
+            $project: {
+
+                category: { $arrayElemAt: ['$category', 0] }
+            }
+        }, {
+            $replaceRoot: {
+                newRoot: '$category'
+            }
+        }, {
+            $match: {
+                onDiscount: true
+            }
+        }, {
+            $project: {
+                discountName: 1,
+                discountAmount: 1
+            }
+        }
+
+        ]);
+
+        console.log('category offers \n', categoryOffers);
+
+
+        let categoryDiscount = 0;
+
+        if (categoryOffers.length > 0) {
+
+            categoryOffers.forEach((offer) => {
+                categoryDiscount += offer.discountAmount;
+            })
+
+
+        }
+
+        console.log('category discount \n', categoryDiscount);
+
+
 
         let totalPriceOfCart;
 
@@ -208,11 +301,32 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
                         newRoot: '$cartItems'
                     }
                 }, {
+                    $lookup: {
+                        from: 'products',
+                        localField: 'product',
+                        foreignField: '_id',
+                        as: 'cartProductData'
+
+                    }
+                }, {
+                    $replaceRoot: {
+                        newRoot: {
+                            $mergeObjects: [
+                                { _id: "$_id", cartID: "$cartID", product: "$product", quantity: "$quantity", price: "$price", __v: "$__v" },
+                                { cartProductData: { $arrayElemAt: ["$cartProductData", 0] } }
+                            ]
+                        }
+                    }
+                }, {
 
                     $addFields: {
                         totalPriceOfTheProduct: {
-                            $multiply: ["$quantity", "$price"]
-                        }
+                            $cond: {
+                                if: { $eq: ['$cartProductData.onOffer', true] },
+                                then: { $multiply: ["$quantity", '$cartProductData.offerPrice'] },
+                                else: { $multiply: ["$quantity", "$price"] },
+                            },
+                        },
                     }
                 },
                 {
@@ -224,37 +338,56 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
 
 
-            ]).exec()
+            ]).exec();
 
+            console.log('total\n', totalPriceOfCart)
 
 
             totalPriceOfCart = totalPriceOfCart[0].totalAmount;
 
             let finalPrice = totalPriceOfCart;
 
-            let discountAmount = 0;
+            let couponDiscountAmount = 0;
 
-            if (rateOfDiscount && maximumDiscount && couponID) {
 
-                let discountAsPerRateOfDiscount = (totalPriceOfCart * rateOfDiscount) / 100;
 
-                discountAmount = discountAsPerRateOfDiscount > maximumDiscount ? maximumDiscount : discountAsPerRateOfDiscount;
+            if (rateOfCouponDiscount && maximumCouponDiscount && couponID) {
 
-                finalPrice = totalPriceOfCart - discountAmount;
+                let discountAsPerRateOfDiscount = (totalPriceOfCart * rateOfCouponDiscount) / 100;
 
-                if (!(totalPriceOfCart === (finalPrice + discountAmount))) {
+                couponDiscountAmount = discountAsPerRateOfDiscount > maximumCouponDiscount ? maximumCouponDiscount : discountAsPerRateOfDiscount;
+
+                couponDiscountAmount = Math.ceil(couponDiscountAmount);
+
+                finalPrice = totalPriceOfCart - couponDiscountAmount;
+
+                if (!(totalPriceOfCart === (finalPrice + couponDiscountAmount))) {
                     throw new Error(' failed to calculate the discount . Issues in business logic')
                 }
 
             }
 
+
+            if (categoryDiscount > 0) {
+
+                finalPrice -= categoryDiscount;
+
+                if (!(totalPriceOfCart === (finalPrice + couponDiscountAmount + categoryDiscount))) {
+                    throw new Error(' failed to calculate the discount . Issues in business logic')
+                }
+
+
+            }
+
+
+
             let newOrder;
 
 
             if (couponID) {
-                newOrder = new Order({ userID, paymentMethod, paymentStatus, orderStatus: 'clientSideProcessing', shippingAddress: deliveryAddressID, grossTotal: totalPriceOfCart, couponApplied: couponID, discountAmount, finalPrice })
+                newOrder = new Order({ userID, paymentMethod, paymentStatus, orderStatus: 'clientSideProcessing', shippingAddress: deliveryAddressID, grossTotal: totalPriceOfCart, couponApplied: couponID, discountAmount: couponDiscountAmount, finalPrice, categoryDiscount })
             } else {
-                newOrder = new Order({ userID, paymentMethod, paymentStatus, orderStatus: 'clientSideProcessing', shippingAddress: deliveryAddressID, grossTotal: totalPriceOfCart, discountAmount, finalPrice })
+                newOrder = new Order({ userID, paymentMethod, paymentStatus, orderStatus: 'clientSideProcessing', shippingAddress: deliveryAddressID, grossTotal: totalPriceOfCart, discountAmount: couponDiscountAmount, finalPrice, categoryDiscount });
             }
 
 
@@ -369,6 +502,8 @@ const renderPaymentPage = async (req, res, next) => {
             return;
         }
 
+        const userID = new mongoose.Types.ObjectId(req.session.userID);
+
 
         const orderID = new mongoose.Types.ObjectId(req.params.orderID);
 
@@ -475,13 +610,83 @@ const renderPaymentPage = async (req, res, next) => {
         console.log('\n\n\n' + JSON.stringify(address, null, 2) + '\n\n\n');
 
 
-        if (orderData && productsData && address) {
+
+        const categoryOffers = await Cart.aggregate([{
+            $match: {
+                userID: userID,
+            },
+        }, {
+            $lookup: {
+                from: 'cartitems',
+                localField: 'items',
+                foreignField: '_id',
+                as: 'cartItems',
+            }
+        }, {
+
+            $unwind: "$cartItems"
+
+
+        }, {
+            $replaceRoot: {
+                newRoot: '$cartItems'
+            }
+        }, {
+            $lookup: {
+                from: 'products',
+                localField: 'product',
+                foreignField: '_id',
+                as: 'cartProductData'
+
+            }
+        }, {
+            $replaceRoot: {
+                newRoot: {
+                    $mergeObjects: [
+
+                        { category: { $arrayElemAt: ["$cartProductData.category", 0] } }
+                    ]
+                }
+            }
+        }
+            , {
+            $lookup: {
+                from: 'categories',
+                localField: 'category',
+                foreignField: '_id',
+                as: 'category',
+            }
+        },
+        {
+            $project: {
+
+                category: { $arrayElemAt: ['$category', 0] }
+            }
+        }, {
+            $replaceRoot: {
+                newRoot: '$category'
+            }
+        }, {
+            $match: {
+                onDiscount: true
+            }
+        }, {
+            $project: {
+                discountName: 1,
+                discountAmount: 1
+            }
+        }
+
+        ]);
+
+
+        if (orderData && productsData && address && categoryOffers) {
 
 
 
 
 
-            res.render('users/paymentPage.ejs', { address, orderData, productsData });
+            res.render('users/paymentPage.ejs', { address, orderData, productsData, categoryOffers });
 
 
 
@@ -531,11 +736,48 @@ const placeCodOrderHandler = async (req, res, next) => {
 
         const userID = req.session.userID;
 
-        const { orderID } = req.body;
+        const orderID = new mongoose.Types.ObjectId(req.body.orderID);
 
-        const orderPlaced = await Order.updateOne({ _id: orderID, userID: userID }, { $set: { orderStatus: 'shipmentProcessing', clientOrderProcessingCompleted: true } })
+        const orderPlaced = await Order.updateOne({ _id: orderID, userID: userID }, { $set: { orderStatus: 'shipmentProcessing', clientOrderProcessingCompleted: true } });
 
-        console.log(orderPlaced)
+        let orderedItems = await Order.aggregate([{
+            $match: {
+                _id: orderID,
+            }
+        }
+
+            , {
+            $project: {
+                'orderItems': 1
+            }
+
+        }, {
+            $lookup: {
+                from: 'orderitems',
+                localField: 'orderItems',
+                foreignField: '_id',
+                as: 'items'
+            }
+        }, {
+            $unwind: '$items'
+        }, {
+            $replaceRoot: {
+                newRoot: '$items'
+            }
+        }, {
+            $project: {
+
+                product: 1,
+                quantity: 1
+            }
+        }, {
+            $project: {
+                _id: 0
+            }
+        }
+        ]).exec();
+
+        console.log(orderedItems);
 
         if (orderPlaced.matchedCount === 1 && orderPlaced.modifiedCount === 1) {
 
@@ -546,6 +788,12 @@ const placeCodOrderHandler = async (req, res, next) => {
             const itemsInCart = userCart.items;
 
             console.log(itemsInCart);
+
+            for (const item of orderedItems) {
+
+                const updateProductQuantity = await Product.findByIdAndUpdate(item.product, { $inc: { stock: -(item.quantity) } })
+
+            }
 
             const deletedCartItems = await CartItem.deleteMany({ _id: { $in: itemsInCart } });
 

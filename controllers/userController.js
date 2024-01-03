@@ -7,8 +7,20 @@ const OtpData = require('../models/otpDataModel');
 const Address = require('../models/addressModel');
 const Order = require('../models/orderModel');
 const Cart = require('../models/cartModel');
-const CartItem = require('../models/cartItemModel')
+const CartItem = require('../models/cartItemModel');
+const Product = require('../models/productModel');
+const puppeteer = require('puppeteer');
+const path = require('path');
 const userVerificationHelper = require('../helpers/userVerificationHelpers');
+
+const dotenv = require('dotenv').config()
+
+//! razorPay Instance
+const Razorpay = require('razorpay');
+const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 
 // render Home page
 const renderHomePage = async (req, res, next) => {
@@ -691,7 +703,7 @@ const resetPasswordHandler = async (req, res, next) => {
 
                 };
 
-                res.redirect('/user/forgotPassword');
+                res.redirect('/user/resetPassword');
                 return;
 
 
@@ -699,10 +711,10 @@ const resetPasswordHandler = async (req, res, next) => {
 
                 req.session.message = {
                     type: 'danger',
-                    message: 'The password should contain at-least one capital letter one small letter and one symbol and should be eight character long'
+                    message: 'The password should contain at-least one capital letter one small letter and one symbol(@$!%*?&) and should be eight character long'
                 }
 
-                res.redirect('/user/forgotPassword');
+                res.redirect('/user/resetPassword');
                 return;
             }
 
@@ -946,7 +958,33 @@ const editProfileHandler = async (req, res, next) => {
 
         const newName = firstName.trim() + " " + lastName.trim();
 
-        const updatedUser = await User.findByIdAndUpdate(userID, { $set: { name: newName, phone } });
+
+        let DataForUpdate = {
+
+            $set: {
+                name: newName,
+                phone,
+
+
+            }
+        };
+
+        console.log(req.file);
+
+        let profileImg
+
+        if (req.file) {
+
+            profileImg = req.file.filename;
+
+            DataForUpdate.$set.profileImg = profileImg;
+        }
+
+
+
+
+
+        const updatedUser = await User.findByIdAndUpdate(userID, DataForUpdate);
 
         if (updatedUser instanceof User) {
 
@@ -959,6 +997,8 @@ const editProfileHandler = async (req, res, next) => {
 
     }
     catch (err) {
+
+        console.log(err);
 
         res.status(500).json({ "success": false, "message": "Failed to update the Profile Hint: server facing issues !" })
 
@@ -1134,6 +1174,7 @@ const orderPageRender = async (req, res, next) => {
                 grossTotal: { $first: '$grossTotal' },
                 couponApplied: { $first: '$couponApplied' },
                 discountAmount: { $first: '$discountAmount' },
+                categoryDiscount: { $first: '$categoryDiscount' },
                 finalPrice: { $first: '$finalPrice' },
                 clientOrderProcessingCompleted: { $first: '$clientOrderProcessingCompleted' },
                 orderDate: { $first: '$orderDate' },
@@ -1149,6 +1190,7 @@ const orderPageRender = async (req, res, next) => {
                 shippingAddress: 1,
                 grossTotal: 1,
                 couponApplied: 1,
+                categoryDiscount: 1,
                 discountAmount: 1,
                 finalPrice: 1,
                 clientOrderProcessingCompleted: 1,
@@ -1172,6 +1214,10 @@ const orderPageRender = async (req, res, next) => {
                         }
                     }
                 }
+            }
+        }, {
+            $sort: {
+                finalPrice: -1
             }
         }
 
@@ -1217,6 +1263,14 @@ const cancelOrderHandler = async (req, res, next) => {
         const orderExist = await Order.findOne({ _id: orderID, userID });
 
         const orderPrice = orderExist.finalPrice;
+
+        if (orderExist.orderStatus === 'delivered') {
+
+            res.status(400).json({ "success": false, "message": " The order is already delivered you can't cancel it " });
+
+            return;
+
+        }
 
         if (orderExist instanceof Order && orderExist.paymentMethod === 'cod') {
 
@@ -1280,87 +1334,549 @@ const cancelOrderHandler = async (req, res, next) => {
     }
 }
 
-// ! reduce quantity of item in cart 
-
-
-const reduceCartItemQuantityHandler = async (req, res, next) => {
-
+const razorPayCreateOrder = async (req, res, next) => {
 
     try {
 
         if (!req.session.userID) {
 
-            res.status(401).json({
-                "success": false,
-                "message": "session timedOut login to reduce item quantity from cart"
-            })
+            res.status(401).json({ 'success': false, "message": 'session timeout login to continue purchasing' });
 
             return;
         }
 
-        const { cartItemID } = req.body;
+        const orderID = req.params.orderID;
 
         const userID = req.session.userID;
 
-        if (!cartItemID || !userID) {
+        const orderData = await Order.findById(orderID);
 
-            res.status(400).json({
-                "success": false,
-                "message": "server facing issues try again Hint failed to get cartItem data !"
+        if (!orderData) {
+
+            res.status(500).json({ 'success': false, "message": ' server facing issue getting order data' });
+
+            return;
+
+        }
+
+
+        const amount = orderData.finalPrice * 100;
+
+        const receipt = orderData._id.toString();
+
+        const currency = 'INR';
+
+        const options = {
+            amount: amount,
+            currency: currency,
+            receipt: receipt
+        };
+
+        razorpay.orders.create(options, (err, order) => {
+
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ 'success': false, "message": 'server facing issues when creating order' });
+            }
+
+            console.log(order)
+            res.status(200).json({ 'success': true, "message": 'continue', order });
+        });
+
+
+    }
+    catch (err) {
+        console.log(err);
+
+        res.status(500).json({ 'success': false, "message": 'server facing issues when creating order' })
+    }
+}
+
+// !payment Success Handler
+
+const paymentSuccessHandler = async (req, res, next) => {
+
+
+    try {
+
+        const userID = req.session.userID;
+
+        console.log(req.body);
+
+        const { receipt, id } = req.body;
+
+        const orderID = new mongoose.Types.ObjectId(receipt);
+
+        let orderedItems = await Order.aggregate([{
+            $match: {
+                _id: orderID,
+            }
+        }
+
+            , {
+            $project: {
+                'orderItems': 1
+            }
+
+        }, {
+            $lookup: {
+                from: 'orderitems',
+                localField: 'orderItems',
+                foreignField: '_id',
+                as: 'items'
+            }
+        }, {
+            $unwind: '$items'
+        }, {
+            $replaceRoot: {
+                newRoot: '$items'
+            }
+        }, {
+            $project: {
+
+                product: 1,
+                quantity: 1
+            }
+        }, {
+            $project: {
+                _id: 0
+            }
+        }
+        ]).exec();
+
+
+        const updatedOrder = await Order.findByIdAndUpdate(orderID,
+            {
+                $set:
+                {
+                    paymentStatus: 'paid',
+                    orderStatus: 'shipmentProcessing', clientOrderProcessingCompleted: true, razorpayTransactionId: id
+                }
+            });
+
+        console.log('updateOrder', updatedOrder);
+
+        if (updatedOrder instanceof Order) {
+
+
+
+
+
+            const userDataUpdate = await User.findByIdAndUpdate(userID, { $push: { orders: updatedOrder._id } })
+
+            if (userDataUpdate instanceof User) {
+
+                res.status(200).json({ 'success': true, "message": ' order placed successfully' });
+
+                const userCart = await Cart.findOne({ userID: userID });
+
+                const itemsInCart = userCart.items;
+
+                console.log(itemsInCart);
+
+                for (const item of orderedItems) {
+
+                    const updateProductQuantity = await Product.findByIdAndUpdate(item.product, { $inc: { stock: -(item.quantity) } })
+
+                }
+
+
+                const deletedCartItems = await CartItem.deleteMany({ _id: { $in: itemsInCart } });
+
+                if (deletedCartItems.ok && deletedCartItems.n === itemsInCart.length && deletedCartItems.deletedCount === itemsInCart.length) {
+
+                    const updatedCart = await Cart.findByIdAndUpdate(userCart._id, { $set: { items: [] } });
+
+                    if (updatedCart instanceof Cart) {
+                        console.log('successfully removed from the cart');
+                    }
+
+                }
+
+            } else {
+                res.status(500).json({ 'success': false, "message": ' Payment successful but server facing error updating order info contact customer service' })
+            }
+
+
+
+        } else {
+
+            res.status(500).json({ 'success': false, "message": ' Payment successful but server facing error updating order info contact customer service' })
+        }
+
+    }
+    catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({ 'success': false, "message": ' Payment successful but server facing error updating order info contact customer service' })
+    }
+}
+
+// ! render order details page 
+
+const renderOrderDetails = async (req, res, next) => {
+
+    try {
+
+
+        if (!req.session.userID) {
+
+
+            req.session.message = {
+                type: 'danger',
+                message: 'session time out login to got to order details page  !',
+
+            };
+
+            res.redirect('/');
+
+            return;
+        }
+
+        const userID = new mongoose.Types.ObjectId(req.session.userID);
+
+
+        const orderID = new mongoose.Types.ObjectId(req.params.orderID);
+
+        if (!orderID) {
+
+            req.session.message = {
+                type: 'danger',
+                message: 'Failed to Fetch order Details  !',
+
+            };
+
+            res.redirect('/user/orders');
+
+            return;
+        }
+
+
+
+        const orderData = await Order.findById(orderID);
+
+
+        let productsData = await Order.aggregate([{
+            $match: {
+                _id: orderID
+            }
+        }, {
+            $lookup: {
+                from: 'orderitems',
+                localField: 'orderItems',
+                foreignField: '_id',
+                as: 'orderedProducts',
+            }
+        }, {
+            $unwind: "$orderedProducts"
+        }, {
+            $replaceRoot: {
+                newRoot: "$orderedProducts"
+            }
+        }, {
+            $lookup: {
+                from: 'products',
+                localField: 'product',
+                foreignField: '_id',
+                as: 'productInfo'
+
+            }
+        }, {
+            $replaceRoot: {
+                newRoot: {
+                    $mergeObjects: [
+                        { _id: "$_id", userID: "$userID", product: "$product", quantity: "$quantity", totalPrice: "$totalPrice", __v: "$__v" },
+                        { productInfo: { $arrayElemAt: ["$productInfo", 0] } }
+                    ]
+                }
+            }
+        }
+
+        ]).exec();
+
+
+        console.log('\n\n\n' + JSON.stringify(productsData, null, 2) + '\n\n\n');
+
+
+        let address = await Order.aggregate([{
+            $match: {
+                _id: orderID
+            }
+        }, {
+            $lookup: {
+                from: 'addresses',
+                localField: 'shippingAddress',
+                foreignField: '_id',
+                as: 'address',
+            }
+        }, {
+
+            $unwind: "$address"
+        }, {
+
+            $replaceRoot: {
+                newRoot: "$address"
+            }
+        }
+
+        ]).exec();
+
+
+        address = address[0];
+
+        // console.log('\n\n\n' + JSON.stringify(address, null, 2) + '\n\n\n');
+
+
+
+
+        if (orderData && productsData && address) {
+
+
+
+
+
+            res.render('users/orderDetailsPage.ejs', { address, orderData, productsData });
+
+
+
+
+        } else {
+
+            req.session.message = {
+                type: 'danger',
+                message: 'Failed to Fetch order Details  !',
+
+            };
+
+            res.redirect('/user/orders');
+
+            return;
+
+
+        }
+
+    }
+
+    catch (err) {
+
+        console.log(err)
+    }
+}
+
+// ! render invoice page 
+
+const renderInvoicePage = async (req, res, next) => {
+
+    try {
+
+
+
+
+        const orderID = new mongoose.Types.ObjectId(req.params.orderID);
+
+        if (!orderID) {
+
+            req.session.message = {
+                type: 'danger',
+                message: 'Failed to Fetch order Details  !',
+
+            };
+
+            res.redirect('/user/orders');
+
+            return;
+        }
+
+
+
+        const orderData = await Order.findById(orderID);
+
+
+        let productsData = await Order.aggregate([{
+            $match: {
+                _id: orderID
+            }
+        }, {
+            $lookup: {
+                from: 'orderitems',
+                localField: 'orderItems',
+                foreignField: '_id',
+                as: 'orderedProducts',
+            }
+        }, {
+            $unwind: "$orderedProducts"
+        }, {
+            $replaceRoot: {
+                newRoot: "$orderedProducts"
+            }
+        }, {
+            $lookup: {
+                from: 'products',
+                localField: 'product',
+                foreignField: '_id',
+                as: 'productInfo'
+
+            }
+        }, {
+            $replaceRoot: {
+                newRoot: {
+                    $mergeObjects: [
+                        { _id: "$_id", userID: "$userID", product: "$product", quantity: "$quantity", totalPrice: "$totalPrice", __v: "$__v" },
+                        { productInfo: { $arrayElemAt: ["$productInfo", 0] } }
+                    ]
+                }
+            }
+        }
+
+        ]).exec();
+
+
+        console.log('\n\n\n' + JSON.stringify(productsData, null, 2) + '\n\n\n');
+
+
+        let address = await Order.aggregate([{
+            $match: {
+                _id: orderID
+            }
+        }, {
+            $lookup: {
+                from: 'addresses',
+                localField: 'shippingAddress',
+                foreignField: '_id',
+                as: 'address',
+            }
+        }, {
+
+            $unwind: "$address"
+        }, {
+
+            $replaceRoot: {
+                newRoot: "$address"
+            }
+        }
+
+        ]).exec();
+
+
+        address = address[0];
+
+        // console.log('\n\n\n' + JSON.stringify(address, null, 2) + '\n\n\n');
+
+
+        if (orderData && productsData && address) {
+
+
+
+
+
+            res.render('users/invoicePage.ejs', { address, orderData, productsData });
+
+
+
+
+        } else {
+
+            req.session.message = {
+                type: 'danger',
+                message: 'Failed to Fetch order Details  !',
+
+            };
+
+            res.redirect('/user/orders');
+
+            return;
+
+
+        }
+
+    }
+
+    catch (err) {
+
+        console.log(err)
+    }
+}
+
+// ! download sales invoice handler
+
+const downloadInvoice = async (req, res, next) => {
+
+    try {
+
+
+        if (!req.session.userID) {
+
+
+            req.session.message = {
+                type: 'danger',
+                message: 'session time out login to got to render invoice  !',
+
+            };
+
+            res.redirect('/');
+
+            return;
+        }
+
+        let orderID = req.params.orderID;
+
+
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+
+
+        await page.setViewport({
+            width: 1680,
+            height: 800,
+        });
+
+        await page.goto(`${req.protocol}://${req.get('host')}` + '/user/invoice/' + `${orderID}`, { waitUntil: 'networkidle2' });
+
+
+
+
+
+
+
+
+
+        const date = new Date();
+
+        const pdfn = await page.pdf({
+            path: `${path.join(__dirname, '../public/files/salesReport', date.getTime() + '.pdf')}`,
+            printBackground: true,
+            format: "A4"
+        })
+
+        setTimeout(async () => {
+            await browser.close();
+
+
+            const pdfURL = path.join(__dirname, '../public/files/salesReport', date.getTime() + '.pdf');
+
+
+
+
+            res.download(pdfURL, function (err) {
+
+                if (err) {
+                    console.log(err)
+                }
             })
 
-            return;
-        };
 
-        const cartItem = await CartItem.findById(cartItemID);
-
-        console.log('\n\n\n' + cartItem);
-
-        if (!cartItem) {
-
-            res.status(400).json({
-                "success": false,
-                "message": " Failed to reduce quantity as item not found in cart !"
-            });
-            return;
-        };
+        }, 1000);
 
 
-        if (cartItem.quantity === 1) {
 
-            res.status(400).json({
-                "success": false,
-                "message": " There is only one more quantity in cart. If you wish to remove it press delete button !"
-            });
-
-            return;
-
-        }
-
-        const updatedCartItem = await CartItem.findByIdAndUpdate(cartItemID, { $inc: { quantity: -1 } });
-
-        if (updatedCartItem) {
-
-            res.status(200).json({
-                "success": true,
-                "message": " removed one item!"
-            });
-
-        }
 
 
     }
     catch (err) {
 
-        console.log(err)
-
-        res.status(500).json({
-            "success": false,
-            "message": "server facing issues  try again"
-        })
+        next(err);
     }
-
-
 }
 
 module.exports = {
@@ -1387,5 +1903,9 @@ module.exports = {
     changePasswordHandler,
     orderPageRender,
     cancelOrderHandler,
-    
+    razorPayCreateOrder,
+    paymentSuccessHandler,
+    renderOrderDetails,
+    renderInvoicePage,
+    downloadInvoice
 }

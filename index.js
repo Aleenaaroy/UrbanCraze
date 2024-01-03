@@ -1,6 +1,7 @@
 // importing libraries and file dependencies 
 const express = require("express");
 const session = require("express-session");
+const dotenv = require('dotenv').config();
 const mongoose = require("mongoose");
 
 const userRoute = require('./routes/userRoute');
@@ -8,7 +9,7 @@ const adminRoute = require('./routes/adminRoute');
 const errorHandler = require('./middleware/errorHandling');
 
 // connecting to mongodb database using mongoose
-mongoose.connect("mongodb://127.0.0.1:27017/UrbanCraze_Ecommercedb")
+mongoose.connect(`${process.env.MONGODB_CONN}`)
     .then(() => {
         console.log('connected to mongodb database')
     })
@@ -43,8 +44,16 @@ app.use((req, res, next) => {
 
 //middleware for req data parsing
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
+app.use(express.urlencoded({ extended: true }));
+app.use((error, req, res, next) => {
+    if (error instanceof SyntaxError) {
+        // Handle JSON parsing errors
+        console.error('JSON parsing error:', error);
+        res.status(400).json({ error: 'Invalid JSON data' });
+    } else {
+        next(error);
+    }
+});
 
 //middleware for serving static files
 app.use(express.static('public'));
@@ -77,5 +86,5 @@ app.use('*', errorHandler.userPageNotFound);
 
 //server listening at port for requests
 app.listen(PORT,function(){
-    console.log(`Server is launched at "http://localhost:${PORT}/user/login"`)
+    console.log(`Server is launched at "http://localhost:${PORT}/user/login"`);
 });

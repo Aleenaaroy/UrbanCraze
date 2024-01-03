@@ -19,11 +19,21 @@ router.post('/login', adminController.loginHandler);
 
 // ! logout request handler
 
-router.get('/logout', adminController.logoutHandler)
+router.get('/logout', adminController.logoutHandler);
+
+
+
+
+// ! render sales report page for pdf download
+
+router.get('/salesReport/pdfRender', adminController.renderSalesReportPdfPage);
 
 // ! middleware for validating admin login 
 
-router.use(adminLoginValidation)
+router.use(adminLoginValidation);
+
+
+
 
 // ! render user list page
 
@@ -105,6 +115,60 @@ router.route('/orders')
 router.route('/order/changeStatus/:orderID')
     .get(adminController.renderOrderEditPage)
     .put(adminController.modifyOrderStatusHandler)
+
+// ! admin dashboard render
+
+router.route('/dashboard')
+    .get(adminController.renderAdminDashboard)
+
+// ! chart data handler
+
+router.route('/chart')
+    .get(adminController.getChartDataHandler)
+
+
+// ! render sales report 
+
+router.get('/salesReport', adminController.renderSalesReport)
+
+// ! excel sales report
+router.get('/salesReport/excel', adminController.salesReportInExcel)
+
+// ! sales report PDF download 
+
+router.get('/salesReport/pdf/download', adminController.salesReportInPdf);
+
+// ! products offer page render and add or modify product offer
+
+router.route('/productsOffers')
+    .get(adminController.renderProductOffersPage);
+
+// ! category offer page render and add or modify product offer
+
+router.route('/categoryOffers')
+    .get(adminController.renderCategoryOffersPage);
+
+// ! add or modify product offer
+
+router.post('/productsOffers/:productID', adminController.addOrModifyProductOffer)
+
+// ! activate product offer 
+
+router.post('/productsOffer/activate', adminController.activateProductOffer)
+
+// ! deactivate product offer 
+
+router.post('/productsOffer/deactivate', adminController.deactivateProductOffer)
+
+
+
+// ! activate category offer 
+
+router.post('/categoryOffer/activate', adminController.activateCategoryOffer)
+
+// ! deactivate category offer 
+
+router.post('/categoryOffer/deactivate', adminController.deactivateCategoryOffer)
 
 // ! for rendering error page for unknown / critical error
 
