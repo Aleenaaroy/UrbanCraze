@@ -33,7 +33,7 @@ payBtn.addEventListener('click', function () {
             }
 
             var options = {
-                key: 'rzp_test_rijEZunAGfAVNS',
+                key: 'rzp_test_xvM5W39oNToEea',
                 amount: data.order.amount,
                 currency: 'INR',
                 order_id: data.order.id,
