@@ -11,7 +11,7 @@
                         <div class="breadcrumb__text">
                             <h4>Product Offers</h4>
                             <div class="breadcrumb__links">
-                                <a href="./index.html">Home</a>
+                                <a href="/admin/dashboard">Home</a>
                                 <span>Product Offers</span>
                             </div>
                         </div>
@@ -51,7 +51,7 @@
 
 
                 <div class="table-responsive" id="no-more-tables">
-                    <% if(products.length>0){ %>
+                    <% if(products && products.length>0){ %>
 
                         <table class="table table-striped bg-white" id="myTable">
                             <thead class=" ">
@@ -66,9 +66,7 @@
 
 
 
-                                    <!-- <th class="bg-dark text-white text-center" style="font-size: 15px;" scope="col"
-                                        class="sorting">
-                                        Category</th> -->
+
 
 
 
@@ -105,9 +103,6 @@
 
 
 
-                                    <!-- <th class="bg-dark text-white text-center" style="font-size: 15px;" scope="col">
-                                        Actions
-                                    </th> -->
 
                                 </tr>
                             </thead>
@@ -130,9 +125,6 @@
 
 
 
-                                        <!-- <td data-title="Mobile">
-                                            <%= products[i].category %>
-                                        </td> -->
 
 
 
@@ -178,18 +170,7 @@
                                         </td>
 
 
-                                        <!-- <td data-title="Actions "
-                                            class="d-flex justify-content-center align-items-center "
-                                            style="font-size: 10px; height:145px;">
 
-                                            <a class="btn btn-outline-primary btn-sm mx-3 "
-                                                href="/admin/editProduct/<%=products[i]._id%>">Edit</a>
-                                            <button class="deleteButton btn btn-outline-danger btn-sm"
-                                                data-id='<%=products[i]._id%>'>Delete</button>
-
-
-
-                                        </td> -->
                                     </tr>
                                     <% } %>
 

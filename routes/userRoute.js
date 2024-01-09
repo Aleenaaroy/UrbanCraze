@@ -2,22 +2,32 @@
 
 const express = require('express');
 const router = express.Router();
-
 const userController = require('../controllers/userController');
 const errorHandler = require('../middleware/errorHandling');
 const productController = require('../controllers/productController')
 const cartController = require('../controllers/cartController');
 const checkoutController = require('../controllers/checkoutController');
+const ordersController = require('../controllers/ordersController')
 const { upload } = require('../middleware/multerMiddlewareForProfile');
 
 
-// ! user home render 
+
+// ! user home page render 
 
 router.get('/', productController.renderHomePage);
 
 // ! search page render 
 
-router.get('/search', productController.renderSearchAndBuy)
+router.get('/search', productController.renderSearchAndBuy);
+
+// ! render single product details page
+
+router.route('/user/productDetails/:groupingID')
+    .get(productController.renderProductDetailsPage)
+
+
+
+
 
 
 // ! signUp render and validation
@@ -33,6 +43,10 @@ router.route('/user/login')
     .get(userController.renderLoginPage)
     .post(userController.loginHandler);
 
+// ! user logout 
+
+router.get('/user/logout', userController.logoutHandler);
+
 
 // ! otp verification render and validation
 
@@ -44,7 +58,7 @@ router.route('/user/verifyOTP')
 // ! resend otp 
 
 router.route('/user/resendOTP')
-    .post(userController.resendOtpHandler);
+    .get(userController.resendOtpHandler);
 
 
 // ! email verification page using otp if failed to verify during signUp
@@ -53,15 +67,9 @@ router.route('/user/emailVerification')
     .get(userController.verifyEmailHandler)
 
 
-// ! render single product details page
-
-router.route('/user/productDetails/:groupingID')
-    .get(productController.renderProductDetailsPage)
 
 
-// ! user logout 
 
-router.get('/user/logout', userController.logoutHandler);
 
 
 // ! render forgot password page and handling forgot password req
@@ -109,7 +117,7 @@ router.route('/user/addToCart')
 router.route('/user/cart')
     .get(cartController.renderCartPage)
     .delete(cartController.deleteItemFromCartHandler)
-    .put(cartController.reduceCartItemQuantityHandler);
+    .patch(cartController.reduceCartItemQuantityHandler);
 
 // ! get total price of cart items 
 
@@ -117,11 +125,11 @@ router.get('/user/cartTotal', cartController.getTotalCartPrice);
 
 // ! render checkout page 
 
-router.get('/user/checkout', productController.renderCheckOutPage);
+router.get('/user/checkout', checkoutController.renderCheckOutPage);
 
 // ! add new delivery address handler
 
-router.post('/user/addNewAddress', userController.addNewDeliveryAddress);
+router.post('/user/addNewAddress', checkoutController.addNewDeliveryAddress);
 
 // ! render user profile page
 
@@ -135,7 +143,7 @@ router.route('/user/profile/edit')
 
 // ! change password handler 
 
-router.put('/user/password/change', userController.changePasswordHandler);
+router.patch('/user/password/change', userController.changePasswordHandler);
 
 
 // ! verify coupon handler 
@@ -156,31 +164,31 @@ router.post('/user/placeOrder/cod', checkoutController.placeCodOrderHandler)
 
 // ! orders page render 
 
-router.get('/user/orders', userController.orderPageRender);
+router.get('/user/orders', ordersController.orderPageRender);
 
 // ! cancel a order 
 
-router.put('/user/order/cancel/:orderID', userController.cancelOrderHandler);
+router.delete('/user/order/cancel/:orderID', ordersController.cancelOrderHandler);
 
 // ! route to create the razor Pay order 
 
-router.post('/user/razorPay/createOrder/:orderID', userController.razorPayCreateOrder);
+router.post('/user/razorPay/createOrder/:orderID', ordersController.razorPayCreateOrder);
 
 // ! payment success req from client 
 
-router.post('/user/razorPay/payment-success', userController.paymentSuccessHandler)
+router.post('/user/razorPay/payment-success', ordersController.paymentSuccessHandler)
 
 // ! order Details page render 
 
-router.get('/user/orderDetails/:orderID', userController.renderOrderDetails)
+router.get('/user/orderDetails/:orderID', ordersController.renderOrderDetails)
 
 // ! invoice page render 
 
-router.get('/user/invoice/:orderID', userController.renderInvoicePage)
+router.get('/user/invoice/:orderID', ordersController.renderInvoicePage)
 
 // !download invoice 
 
-router.get('/user/invoice/download/:orderID', userController.downloadInvoice)
+router.get('/user/invoice/download/:orderID', ordersController.downloadInvoice)
 
 // ! for rendering error page for unknown / critical error
 

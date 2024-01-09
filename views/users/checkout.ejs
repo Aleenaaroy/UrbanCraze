@@ -11,8 +11,8 @@
                         <div class="breadcrumb__text">
                             <h4>Check Out</h4>
                             <div class="breadcrumb__links">
-                                <a href="./index.html">Home</a>
-                                <a href="./shop.html">Shop</a>
+                                <a href="/">Home</a>
+                                <a href="/user/cart">Cart</a>
                                 <span>Check Out</span>
                             </div>
                         </div>
@@ -46,7 +46,7 @@
 
 
 
-                            <% if(Addresses.length> 0){%>
+                            <% if(Addresses && Addresses.length> 0){%>
 
 
                                 <div class=" w-100" style="margin-bottom: 2rem;">
@@ -58,7 +58,7 @@
                                                 class="fa-solid fa-caret-down ml-3"></i></button>
                                     </div>
 
-                                    <ul class="select-options  border-0 position-relative ml-3" style="width: 98%;">
+                                    <ul class="select-options  border-0 position-relative  " style="width: 98%;">
 
 
                                         <% for(let i=0 ; i< Addresses.length; i++) { %>
@@ -222,7 +222,7 @@
                                 <div class="checkout__order__products">Product <span>Total</span></div>
                                 <ul class="checkout__total__products">
 
-                                    <% if(itemsInCart.length> 0 ) { %>
+                                    <% if(itemsInCart && itemsInCart.length> 0 ) { %>
 
                                         <% for(let i=0; i < itemsInCart.length ; i++){ %>
 

@@ -11,7 +11,7 @@
                         <div class="breadcrumb__text">
                             <h4>Sales Report</h4>
                             <div class="breadcrumb__links">
-                                <a href="./index.html">Home</a>
+                                <a href="/admin/dashboard">Home</a>
                                 <span>Sales Report</span>
                             </div>
                         </div>
@@ -24,9 +24,10 @@
         <main class="main my-5">
             <div class="mx-5">
 
-                <div class="d-flex justify-content-between my-5" style="font-size: 13px;">
+                <div class="d-flex flex-column align-items-center flex-md-row justify-content-between my-5"
+                    style="font-size: 13px;">
 
-                    <div class="d-flex ">
+                    <div class="d-flex mb-4 mb-md-0 ">
                         <button id="getExcelBtn"
                             class="nav-link p-2 mr-4 d-flex justify-content-around align-items-center"
                             style="background-color: black ; color: azure;  min-width: 92px;">
@@ -56,7 +57,7 @@
 
                 </div>
 
-                <% if(orders.length>0) { %>
+                <% if(orders && orders.length>0) { %>
 
 
 
@@ -137,7 +138,9 @@
                                         <td style="max-width: 200px;" data-title="Email">
 
                                             <ul>
-                                                <% for(let j=0 ; j< orders[i].orderedItems.length ; j++ ){%>
+
+                                                <% if(orders[i].orderedItems && orders[i].orderedItems.length>0) {%>
+                                                    <% for(let j=0 ; j< orders[i].orderedItems.length ; j++ ){%>
 
                                                     <li class="text-uppercase list-unstyled mt-3 ">
                                                         <%=orders[i].orderedItems[j].productInfo[0].name%> (
@@ -146,7 +149,10 @@
                                                     </li>
 
 
-                                                    <% }%>
+                                                        <% }%>
+                                                            <%}%>
+
+
 
                                             </ul>
 
@@ -219,7 +225,7 @@
 
                     <%} else{%>
 
-                        <div class=" text-danger">Products Not Found
+                        <div class=" text-danger">Orders Not Found
                         </div>
 
                         <%}%>

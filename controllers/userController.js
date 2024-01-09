@@ -1,7 +1,7 @@
-// importing necessary libraries and files
+// ! importing necessary libraries and files
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-
 const User = require('../models/userModel');
 const OtpData = require('../models/otpDataModel');
 const Address = require('../models/addressModel');
@@ -15,14 +15,9 @@ const userVerificationHelper = require('../helpers/userVerificationHelpers');
 
 const dotenv = require('dotenv').config()
 
-//! razorPay Instance
-const Razorpay = require('razorpay');
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
 
-// render Home page
+// !render Home page
+
 const renderHomePage = async (req, res, next) => {
     try {
 
@@ -33,76 +28,91 @@ const renderHomePage = async (req, res, next) => {
     }
 }
 
-// render signup page  
+// !signup page render 
+
 const renderSignUpPage = (req, res, next) => {
     // check whether the user is logged. If logged in redirect to home
     if (req.session.userID) {
-        res.redirect('/');
-        return;
+
+        return res.redirect('/');
+
+
     }
 
     try {
-        res.render('users/signUp.ejs');
-        return;
-    }catch (err) {
+
+        return res.render('users/signUp.ejs');
+
+
+    }
+    catch (err) {
         next(err);
     }
 }
 
-// signup validation 
+//! signup validation 
+
 const signUpHandler = async (req, res, next) => {
 
     //regex for checking name and email
     const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)?$/;
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
-    const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+,\-./:;<=>?@[\\\]^_`{|}~])(?=.*[a-zA-Z]).{8,}$/;
-    const phoneRegex = /^\d{10}$/;
+
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
     try {
-        const { name, email, password, phone } = req.body;
-        let missing="";
+
+        const { name, email, password, phone, referralEmail } = req.body;
+
+        let referrer;
+
+        if (referralEmail) {
+
+            referrer = await User.findOne({ email: referralEmail });
+
+        }
+
         // validating input data before creating the user
         if (!name || !email || !password || !phone) {
-            if (!name) {
-                missing=missing+ "name ";}
-            if (!email) {
-                missing=missing+ "email ";}
-            if (!password) {
-                missing=missing+ "password ";}
-            if (!phone) {
-                missing=missing+ "phone ";}  
-            req.session.message = {
-                    type: 'danger',
-                    message: `${missing}  fields mandatory`
-                };       
-            
-        } else if (!nameRegex.test(name)) {
+
             req.session.message = {
                 type: 'danger',
-                message: 'Invalid Name: make sure name only contain letters'
+                message: 'All Fields Are Mandatory'
+            }
+
+        } else if (!passwordRegex.test(password)) {
+
+            req.session.message = {
+                type: 'danger',
+                message: 'The password should contain at-least one capital letter one small letter and one symbol from (@, $, !, %, *, ?, or &) and should be eight character long '
+            }
+        }
+
+        else if (!nameRegex.test(name)) {
+
+            req.session.message = {
+                type: 'danger',
+                message: 'Invalid Name: make sure name only contain  letters and first name and last name only'
             }
         }
         else if (!emailRegex.test(email)) {
+
             req.session.message = {
                 type: 'danger',
                 message: 'Invalid Email: make sure email id is entered correctly'
-            }}
-        else if (!passwordRegex.test(password)) {
-                req.session.message = {
-                    type: 'danger',
-                    message: 'Invalid Password: should be at least 8 characters long, include at least one digit,lower case,upper case and special character'
-                }
-        }
-        else if (!phoneRegex.test(phone)) {
+            }
+        } else if (referralEmail && !(referrer instanceof User)) {
+
             req.session.message = {
                 type: 'danger',
-                message: 'Invalid phone: make sure phone number entered correctly'
+                message: 'Enter a valid referrer email ID'
             }
     }
 
         // redirecting with error message if data validation failed 
         if (req.session.message && req.session.message.type === 'danger') {
-            res.redirect('/user/signUp');
-            return;
+            return res.redirect('/user/signUp');
+
         }
 
         //checking if email is already registered
@@ -112,31 +122,59 @@ const signUpHandler = async (req, res, next) => {
                 type: 'danger',
                 message: 'Invalid Email: This email address is already registered'
             };
-            res.redirect('/user/signUp');
-            return;
+
+            return res.redirect('/user/signUp');
+
 
         } else {
             const hashedPassword = await bcrypt.hash(password, 10);
-            const user = new User({ name, email, phone, password: hashedPassword });
-            user.save()
-                .then((user) => {
+
+            const savedUser = new User({ name, email, phone, password: hashedPassword });
+
+            savedUser.save()
+
+                .then((savedUser) => {
+
+                    if (referrer) {
+                        referrer.wallet += 10;
+
+                        referrer.totalReferralReward += 10;
+
+                        referrer.successfulReferrals.push(savedUser.email);
+
+                        referrer.save();
+
+                        savedUser.wallet += 10;
+
+                        savedUser.save();
+                    }
+
+
+
                     req.session.message = {
                         type: 'success',
                         message: 'Your Registration Is Successful !'
                     };
-                    req.session.verificationToken = user._id;
-                    const isOtpSend = userVerificationHelper.sendOtpEmail(user, res);
+
+                    req.session.verificationToken = savedUser._id;
+
+                    const isOtpSend = userVerificationHelper.sendOtpEmail(savedUser, res);
+
                     if (isOtpSend) {
-                        res.redirect('/user/verifyOTP');
-                        return;
+                        return res.redirect('/user/verifyOTP');
+
+
                     } else {
                         req.session.message = {
                             type: 'danger',
-                            message: 'verification failed : try verify your email',
+                            message: 'verification failed : try verify your email using : ',
                             verification: true
                         };
-                        res.redirect('/user/signUp');
-                        return;
+
+                        return res.redirect('/user/signUp');
+
+
+
                     }
                 })
                 .catch((err) => {
@@ -144,13 +182,15 @@ const signUpHandler = async (req, res, next) => {
                         type: 'danger',
                         message: 'Sorry: Your Registration Failed ! Try again'
                     };
-                    res.redirect('/user/signUp.ejs');
-                    return;
+
+                    return res.redirect('/user/signUp.ejs');
+
+
                 })
         }
     }
     catch (err) {
-        console.log(err)
+
         next(err)
     }
 }
@@ -158,13 +198,18 @@ const signUpHandler = async (req, res, next) => {
 // render otp verification page 
 const renderOtpVerificationPage = async (req, res, next) => {
     if (req.session.userID || !req.session.verificationToken) {
-        res.redirect('/');
-        return;
+
+        return res.redirect('/');
+
     }
     try {
-        res.render('users/verifyOtpPage.ejs');
-        return;
-    }catch (err) {
+
+        return res.render('users/verifyOtpPage.ejs');
+
+
+    }
+
+    catch (err) {
         next(err);
     }
 }
@@ -179,21 +224,34 @@ const otpVerificationHandler = async (req, res, next) => {
                 if (await bcrypt.compare(otp, otpVerificationData.otp)) {
                     const updateUser = await User.updateOne({ _id: req.session.verificationToken }, { $set: { verified: true } });
                     if (updateUser) {
-                        req.session.destroy();
+
+
+
                         req.session.message = {
                             type: 'success',
                             message: 'otp verification completed now you can login'
                         }
-                        res.redirect('/user/login');
-                        return;
+
+                        req.session.destroy();
+
+                        return res.redirect('/user/login');
+
+
                     }
-                } else {
+                }
+                else {
+
                     req.session.message = {
                         type: 'danger',
                         message: 'otp verification failed.enter the right otp'
                     }
-                    res.redirect('/user/verifyOTP');
-                    return;
+
+                    return res.redirect('/user/verifyOTP');
+
+
+
+
+
                 }
             } else {
 
@@ -201,16 +259,21 @@ const otpVerificationHandler = async (req, res, next) => {
                     type: 'danger',
                     message: 'otp got expired try again ,try logging in we will give the option to verify your mail'
                 }
-                res.redirect('/user/login');
-                return;
+
+                return res.redirect('/user/login');
+
+
+
             }
         } else {
             req.session.message = {
                 type: 'danger',
                 message: 'session time out : otp verification failed try logging in we will give the option to verify your mail'
             }
-            res.redirect('/user/login');
-            return;
+
+            return res.redirect('/user/login');
+
+
         }
     }
     catch (err) {
@@ -227,9 +290,9 @@ const resendOtpHandler = async (req, res, next) => {
 
         if (req.session.userID || (!req.session.passwordResetToken && !req.session.verificationToken)) {
 
-            res.status(500).json({ "success": false, 'message': "Error: Session Time Out Try Again !" });
+            return res.status(500).json({ "success": false, 'message': "Error: Session Time Out Try Again !" });
 
-            return;
+
         }
 
         const userID = req.session.passwordResetToken ? req.session.passwordResetToken : req.session.verificationToken;
@@ -243,18 +306,18 @@ const resendOtpHandler = async (req, res, next) => {
 
         if (otpSend) {
 
-            res.status(201).json({ "success": true });
+            return res.status(201).json({ "success": true });
 
 
-            return;
+
 
         } else {
 
-            res.status(500).json({ "success": false, 'message': "Server facing some issues try again  !" });
+            return res.status(500).json({ "success": false, 'message': "Server facing some issues try again  !" });
 
-            console.log('failed')
 
-            return;
+
+
         }
 
 
@@ -264,7 +327,7 @@ const resendOtpHandler = async (req, res, next) => {
 
     catch (err) {
 
-        res.status(500).json({ "success": false, 'message': `${err}` });
+        return res.status(500).json({ "success": false, 'message': `${err}` });
 
     }
 }
@@ -274,12 +337,13 @@ const resendOtpHandler = async (req, res, next) => {
 
 const renderLoginPage = (req, res, next) => {
     if (req.session.userID) {
-        res.redirect('/');
-        return;
+
+        return res.redirect('/');
+
     }
     try {
-        res.render('users/login.ejs');
-        return;
+        return res.render('users/login.ejs');
+
     }
     catch (err) {
         next(err);
@@ -307,8 +371,8 @@ const loginHandler = async (req, res, next) => {
         }
         // redirecting with error if data validation failed 
         if (req.session.message && req.session.message.type === 'danger') {
-            res.redirect('/user/login');
-            return;
+            return res.redirect('/user/login');
+
         }
         const user = await User.findOne({ email });
         if (user) {
@@ -319,16 +383,22 @@ const loginHandler = async (req, res, next) => {
                             type: 'danger',
                             message: 'You are blocked by the admin'
                         }
-                        res.redirect('/user/login');
-                        return;
+
+                        return res.redirect('/user/login');
+
+
+
+
                     } else {
                         req.session.userID = user._id;
                         req.session.message = {
                             type: 'success',
                             message: ' You have successfully logged in '
                         }
-                        res.redirect('/');
-                        return;
+
+                        return res.redirect('/');
+
+
                     }
                 } else {
                     req.session.message = {
@@ -340,27 +410,46 @@ const loginHandler = async (req, res, next) => {
                     if (!req.session.verificationToken) {
                         req.session.verificationToken = user._id;
                     }
-                    res.redirect('/user/login');
-                    return;
+
+
+                    return res.redirect('/user/login');
+
+
+
                 }
             } else {
                 req.session.message = {
                     type: 'danger',
                     message: 'You entered the wrong password'
                 }
-                res.redirect('/user/login');
-                return;
+
+                return res.redirect('/user/login');
+
+
+
             }
-            }else {
+
+
+
+        }
+        else {
 
             req.session.message = {
                 type: 'danger',
                 message: 'Invalid Email: make sure email id is registered '
             }
-            res.redirect('/user/login');
-            return;
+
+            return res.redirect('/user/login');
+
+
+
         }
-}catch (err) {
+
+
+
+
+    }
+    catch (err) {
         next(err);
     }
 }
@@ -369,9 +458,13 @@ const loginHandler = async (req, res, next) => {
 const logoutHandler = async (req, res, next) => {
     try {
         req.session.destroy();
-        res.redirect('/');
-        return;
-    }catch (err) {
+
+        return res.redirect('/');
+
+
+
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -385,16 +478,21 @@ const verifyEmailHandler = async (req, res, next) => {
         if (deletedOldOtpData.deletedCount === 1) {
             const otpIsSend = userVerificationHelper.sendOtpEmail(user, res);
             if (otpIsSend) {
-                res.redirect('/user/verifyOTP');
-                return;
+
+                return res.redirect('/user/verifyOTP');
+
+
             } else {
                 req.session.message = {
                     type: 'danger',
                     message: 'verification failed',
                     verification: true
                 };
-                res.redirect('/user/login');
-                return;
+
+                return res.redirect('/user/login');
+
+
+
             }
         } else {
             if (user) {
@@ -403,22 +501,28 @@ const verifyEmailHandler = async (req, res, next) => {
                     message: 'Error verifying email : try again ',
                     verification: true
                 }
-                res.redirect('/user/login');
-                return;
+
+                return res.redirect('/user/login');
+
+
+
             }
             else {
                 req.session.message = {
                     type: 'danger',
                     message: 'Error verifying email : try again ',
                 }
-                res.redirect('/user/login');
-                return;
+
+                return res.redirect('/user/login');
+
+
+
             }
         }
     } else {
         userVerificationHelper.sendOtpEmail(user, res);
 
-        return;
+
 
 //! render product details page 
 
@@ -433,17 +537,17 @@ const renderForgotPasswordPage = async (req, res, next) => {
 
     if (req.session.userID) {
 
-        res.redirect('/');
+        return res.redirect('/');
 
-        return;
+
     }
 
 
     try {
 
-        res.render('users/forgotPassword.ejs');
+        return res.render('users/forgotPassword.ejs');
 
-        return;
+
 
     }
     catch (err) {
@@ -459,9 +563,9 @@ const forgotPasswordHandler = async (req, res, next) => {
 
     if (req.session.userID) {
 
-        res.redirect('/');
+        return res.redirect('/');
 
-        return;
+
     }
 
 
@@ -479,8 +583,8 @@ const forgotPasswordHandler = async (req, res, next) => {
 
             if (otpSend) {
 
-                res.redirect('/user/forgotPassword/verifyOTP');
-                return;
+                return res.redirect('/user/forgotPassword/verifyOTP');
+
 
             } else {
                 req.session.message = {
@@ -489,8 +593,8 @@ const forgotPasswordHandler = async (req, res, next) => {
 
                 };
 
-                res.redirect('/user/forgotPassword');
-                return;
+                return res.redirect('/user/forgotPassword');
+
 
             }
 
@@ -505,8 +609,8 @@ const forgotPasswordHandler = async (req, res, next) => {
 
             };
 
-            res.redirect('/user/forgotPassword');
-            return;
+            return res.redirect('/user/forgotPassword');
+
 
         }
 
@@ -533,23 +637,23 @@ const renderForgotPasswordVerifyOtpPage = async (req, res, next) => {
 
         };
 
-        res.redirect('/');
+        return res.redirect('/');
 
-        return;
+
 
     } else if (req.session.passwordResetToken && req.session.emailVerifiedForPasswordReset) {
 
-        res.redirect('/user/resetPassword');
+        return res.redirect('/user/resetPassword');
 
-        return;
+
     }
 
 
     try {
 
-        res.render('users/passwordResetOtpVerification.ejs');
+        return res.render('users/passwordResetOtpVerification.ejs');
 
-        return;
+
 
     }
     catch (err) {
@@ -572,9 +676,9 @@ const forgotPasswordVerifyOtpHandler = async (req, res, next) => {
 
         };
 
-        res.redirect('/');
+        return res.redirect('/');
 
-        return;
+
     }
 
 
@@ -598,7 +702,7 @@ const forgotPasswordVerifyOtpHandler = async (req, res, next) => {
                 req.session.emailVerifiedForPasswordReset = true;
 
 
-                res.redirect('/user/resetPassword');
+                return res.redirect('/user/resetPassword');
 
 
             } else {
@@ -609,8 +713,8 @@ const forgotPasswordVerifyOtpHandler = async (req, res, next) => {
 
                 };
 
-                res.redirect('/user/forgotPassword');
-                return;
+                return res.redirect('/user/forgotPassword');
+
 
             }
 
@@ -623,8 +727,8 @@ const forgotPasswordVerifyOtpHandler = async (req, res, next) => {
 
             };
 
-            res.redirect('/user/forgotPassword');
-            return;
+            return res.redirect('/user/forgotPassword');
+
 
         }
 
@@ -650,17 +754,17 @@ const renderResetPasswordPage = async (req, res, next) => {
 
         };
 
-        res.redirect('/');
+        return res.redirect('/');
 
-        return;
+
     }
 
 
     try {
 
-        res.render('users/passwordResetPage.ejs');
+        return res.render('users/passwordResetPage.ejs');
 
-        return;
+
 
     }
     catch (err) {
@@ -681,9 +785,9 @@ const resetPasswordHandler = async (req, res, next) => {
 
         if (req.session.userID) {
 
-            res.redirect('/');
+            return res.redirect('/');
 
-            return;
+
         }
 
         const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -703,8 +807,8 @@ const resetPasswordHandler = async (req, res, next) => {
 
                 };
 
-                res.redirect('/user/resetPassword');
-                return;
+                return res.redirect('/user/resetPassword');
+
 
 
             } else if (!passwordRegex.test(password)) {
@@ -714,8 +818,8 @@ const resetPasswordHandler = async (req, res, next) => {
                     message: 'The password should contain at-least one capital letter one small letter and one symbol(@$!%*?&) and should be eight character long'
                 }
 
-                res.redirect('/user/resetPassword');
-                return;
+                return res.redirect('/user/resetPassword');
+
             }
 
             else {
@@ -740,8 +844,8 @@ const resetPasswordHandler = async (req, res, next) => {
 
                         req.session.destroy();
 
-                        res.redirect('/user/login');
-                        return;
+                        return res.redirect('/user/login');
+
 
                     }
 
@@ -754,8 +858,8 @@ const resetPasswordHandler = async (req, res, next) => {
 
                     };
 
-                    res.redirect('/user/forgotPassword');
-                    return;
+                    return res.redirect('/user/forgotPassword');
+
 
                 }
 
@@ -769,73 +873,13 @@ const resetPasswordHandler = async (req, res, next) => {
 
             };
 
-            res.redirect('/user/forgotPassword');
-            return;
+            return res.redirect('/user/forgotPassword');
+
 
         }
 
 
 
-
-
-
-
-    }
-    catch (err) {
-        next(err);
-    }
-
-
-}
-
-// ! add new delivery address handler
-
-const addNewDeliveryAddress = async (req, res, next) => {
-
-    try {
-
-
-        if (!req.session.userID) {
-
-            res.status(401).json({ "success": false, "message": "Your session timedOut login to add New Address" })
-
-            return;
-        }
-
-        const userID = req.session.userID;
-
-        let { fullName, country, phone, locality, city, addressLine, state, pinCode } = req.body;
-
-        console.log(req.body);
-
-        if (!fullName || !country || !phone || !locality || !city || !addressLine || !state || !pinCode) {
-
-            res.status(400).json({ "success": false, "message": " Failed to create new Address all fields are mandatory  !" })
-        }
-
-        const newAddress = new Address({ userID, fullName, country, phone, locality, city, addressLine, state, pinCode });
-
-        savedAddress = await newAddress.save();
-
-        if (savedAddress instanceof Address) {
-
-            const updatedUser = await User.findByIdAndUpdate(userID, { $push: { addresses: savedAddress._id } });
-
-            if (updatedUser instanceof User) {
-
-                res.status(201).json({ "success": true, "message": " New Delivery Address Added successfully" })
-            }
-            else {
-
-                res.status(500).json({ "success": false, "message": " Failed to create new Address . Server facing issues!" })
-            }
-
-        }
-        else {
-
-            res.status(500).json({ "success": false, "message": " Failed to create new Address . Server facing issues!" })
-
-        }
 
 
 
@@ -863,8 +907,8 @@ const renderUserProfile = async (req, res, next) => {
 
             };
 
-            res.redirect('/');
-            return;
+            return res.redirect('/');
+
         }
 
         const userID = req.session.userID;
@@ -881,16 +925,15 @@ const renderUserProfile = async (req, res, next) => {
 
 
 
-        console.log(user);
 
 
 
-        res.render('users/myAccount.ejs', { user });
+
+        return res.render('users/myAccount.ejs', { user });
 
     }
     catch (err) {
 
-        console.log(err);
 
         next(err)
     }
@@ -911,8 +954,8 @@ const renderEditProfilePage = async (req, res, next) => {
 
             };
 
-            res.redirect('/');
-            return;
+            return res.redirect('/');
+
         }
 
 
@@ -928,11 +971,11 @@ const renderEditProfilePage = async (req, res, next) => {
 
         user = { ...user, firstName, lastName, joined_date };
 
-        res.render('users/editProfile.ejs', { user })
+        return res.render('users/editProfile.ejs', { user })
 
     }
     catch (err) {
-        console.log(err);
+
 
         next(err)
     }
@@ -947,10 +990,12 @@ const editProfileHandler = async (req, res, next) => {
 
         if (!req.session.userID) {
 
-            res.status(401).json({ "success": false, "message": "Your session timedOut login to edit profile" })
+            return res.status(401).json({ "success": false, "message": "Your session timedOut login to edit profile" })
 
-            return;
+
         }
+
+
 
         const userID = req.session.userID;
 
@@ -969,7 +1014,7 @@ const editProfileHandler = async (req, res, next) => {
             }
         };
 
-        console.log(req.file);
+
 
         let profileImg
 
@@ -988,19 +1033,19 @@ const editProfileHandler = async (req, res, next) => {
 
         if (updatedUser instanceof User) {
 
-            res.status(201).json({ "success": true, "message": "Your profile is updated !" });
+            return res.status(201).json({ "success": true, "message": "Your profile is updated !" });
 
-            return;
+
         }
 
-        res.status(500).json({ "success": false, "message": "Failed to update the Profile Hint: server facing issues !" })
+        return res.status(500).json({ "success": false, "message": "Failed to update the Profile Hint: server facing issues !" })
 
     }
     catch (err) {
 
-        console.log(err);
 
-        res.status(500).json({ "success": false, "message": "Failed to update the Profile Hint: server facing issues !" })
+
+        return res.status(500).json({ "success": false, "message": "Failed to update the Profile Hint: server facing issues !" })
 
     }
 }
@@ -1014,9 +1059,9 @@ const changePasswordHandler = async (req, res, next) => {
 
         if (!req.session.userID) {
 
-            res.status(401).json({ "success": false, "message": "Your session timedOut login to edit profile" })
+            return res.status(401).json({ "success": false, "message": "Your session timedOut login to edit profile" })
 
-            return;
+
         }
 
         const userID = req.session.userID;
@@ -1032,18 +1077,18 @@ const changePasswordHandler = async (req, res, next) => {
         if (! await bcrypt.compare(currentPassword, password)) {
 
 
-            res.status(401).json({ "success": false, "message": "Enter the right current password ! " })
+            return res.status(401).json({ "success": false, "message": "Enter the right current password ! " })
 
 
-            return;
+
         }
 
 
         if (!passwordRegex.test(newPassword)) {
 
-            res.status(400).json({ "success": false, "message": "The new  password should contain at-least one capital letter one small letter and one symbol from (@, $, !, %, *, ?, or &) and should be eight character long  " });
+            return res.status(400).json({ "success": false, "message": "The new  password should contain at-least one capital letter one small letter and one symbol from (@, $, !, %, *, ?, or &) and should be eight character long  " });
 
-            return;
+
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -1051,9 +1096,9 @@ const changePasswordHandler = async (req, res, next) => {
         if (!hashedPassword) {
 
 
-            res.status(500).json({ "success": false, "message": " Failed to change password due to server issues  " });
+            return res.status(500).json({ "success": false, "message": " Failed to change password due to server issues  " });
 
-            return;
+
         }
 
         const updatedData = await User.findByIdAndUpdate(userID, { $set: { password: hashedPassword } });
@@ -1061,823 +1106,30 @@ const changePasswordHandler = async (req, res, next) => {
 
         if (updatedData instanceof User) {
 
-            res.status(201).json({ "success": true, "message": " Your password is changed  !" });
+            return res.status(201).json({ "success": true, "message": " Your password is changed  !" });
 
-            return;
+
 
         }
 
 
-        res.status(500).json({ "success": false, "message": " Failed to change password due to server issues  " });
+        return res.status(500).json({ "success": false, "message": " Failed to change password due to server issues  " });
 
-        return;
 
-    }
-    catch (err) {
 
-        res.status(500).json({ "success": false, "message": "Failed to update the Profile Hint: server facing issues !" })
-
-    }
-}
-
-// ! render orders page 
-
-const orderPageRender = async (req, res, next) => {
-
-    try {
-
-        if (!req.session.userID) {
-
-            req.session.message = {
-                type: 'danger',
-                message: 'login to view your orders !',
-
-            };
-
-
-            res.redirect('/');
-            return;
-        }
-        const userID = new mongoose.Types.ObjectId(req.session.userID);
-
-        let orders = await User.aggregate([{
-            $match: {
-                _id: userID,
-            }
-        }, {
-            $lookup: {
-                from: 'orders',
-                localField: 'orders',
-                foreignField: '_id',
-                as: 'ordersPlaced',
-            }
-        }, {
-            $unwind: '$ordersPlaced'
-        },
-        {
-            $replaceRoot: {
-                newRoot: '$ordersPlaced'
-            }
-        }, {
-
-            $match: {
-
-                $and: [
-
-
-                    {
-                        orderStatus: {
-                            $nin: ['clientSideProcessing', 'cancelled']
-                        }
-                    },
-
-                    {
-                        paymentStatus: {
-                            $nin: ['pending', 'failed', 'refunded', 'cancelled']
-                        }
-                    },
-                    { clientOrderProcessingCompleted: true }]
-            },
-
-        },
-
-        {
-            $lookup: {
-                from: 'orderitems',
-                localField: 'orderItems',
-                foreignField: '_id',
-                as: 'orderedItems',
-            }
-        }, {
-            $unwind: '$orderedItems'
-        },
-
-
-
-        {
-            $lookup: {
-                from: 'products',
-                localField: 'orderedItems.product',
-                foreignField: '_id',
-                as: 'orderedItems.productInfo'
-            }
-        },
-
-        {
-            $group: {
-                _id: '$_id',
-                userID: { $first: '$userID' },
-                paymentMethod: { $first: '$paymentMethod' },
-                paymentStatus: { $first: '$paymentStatus' },
-                orderStatus: { $first: '$orderStatus' },
-                shippingAddress: { $first: '$shippingAddress' },
-                grossTotal: { $first: '$grossTotal' },
-                couponApplied: { $first: '$couponApplied' },
-                discountAmount: { $first: '$discountAmount' },
-                categoryDiscount: { $first: '$categoryDiscount' },
-                finalPrice: { $first: '$finalPrice' },
-                clientOrderProcessingCompleted: { $first: '$clientOrderProcessingCompleted' },
-                orderDate: { $first: '$orderDate' },
-                orderedItems: { $push: '$orderedItems' }
-            }
-        }, {
-            $project: {
-                _id: 1,
-                userID: 1,
-                paymentMethod: 1,
-                paymentStatus: 1,
-                orderStatus: 1,
-                shippingAddress: 1,
-                grossTotal: 1,
-                couponApplied: 1,
-                categoryDiscount: 1,
-                discountAmount: 1,
-                finalPrice: 1,
-                clientOrderProcessingCompleted: 1,
-                orderDate: 1,
-                orderedItems: {
-                    $map: {
-                        input: "$orderedItems",
-                        as: "item",
-                        in: {
-                            _id: "$$item._id",
-                            userID: "$$item.userID",
-                            product: "$$item.product",
-                            quantity: "$$item.quantity",
-                            totalPrice: "$$item.totalPrice",
-                            productInfo: {
-                                name: { $arrayElemAt: ["$$item.productInfo.name", 0] },
-                                price: { $arrayElemAt: ["$$item.productInfo.price", 0] },
-                                color: { $arrayElemAt: ["$$item.productInfo.color", 0] }
-
-                            }
-                        }
-                    }
-                }
-            }
-        }, {
-            $sort: {
-                finalPrice: -1
-            }
-        }
-
-
-
-
-
-        ]).exec()
-
-        console.log('\n\n\n' + JSON.stringify(orders, null, 2) + '\n\n\n');
-
-
-        res.render('users/allOrders.ejs', { orders });
-
-    }
-    catch (err) {
-
-        console.log(err);
-
-        next(err)
-    }
-}
-
-// ! cancel orders
-
-const cancelOrderHandler = async (req, res, next) => {
-
-    try {
-
-
-        if (!req.session.userID) {
-
-            res.status(401).json({ "success": false, "message": "Your session timedOut login to cancel order" })
-
-            return;
-
-        }
-
-        const userID = req.session.userID;
-
-        const orderID = req.params.orderID;
-
-        const orderExist = await Order.findOne({ _id: orderID, userID });
-
-        const orderPrice = orderExist.finalPrice;
-
-        if (orderExist.orderStatus === 'delivered') {
-
-            res.status(400).json({ "success": false, "message": " The order is already delivered you can't cancel it " });
-
-            return;
-
-        }
-
-        if (orderExist instanceof Order && orderExist.paymentMethod === 'cod') {
-
-            const cancelledOrder = await Order.findByIdAndUpdate(orderExist._id, { $set: { orderStatus: 'cancelled' } });
-
-            if (cancelledOrder instanceof Order) {
-
-                res.status(200).json({ "success": true, "message": " Order Cancelled successfully" })
-
-                return;
-
-            } else {
-
-                res.status(500).json({ "success": false, "message": "server while trying to cancel the order" });
-
-                return;
-            }
-
-        } else if (orderExist instanceof Order && orderExist.paymentMethod === 'onlinePayment' && orderExist.paymentStatus === 'paid') {
-
-            const cancelledOrder = await Order.findByIdAndUpdate(orderExist._id, { $set: { orderStatus: 'cancelled', paymentStatus: 'refunded' } });
-
-            if (cancelledOrder instanceof Order) {
-
-                const refund = await User.findByIdAndUpdate(userID, { $inc: { wallet: orderPrice } })
-
-                if (refund instanceof User) {
-                    res.status(200).json({ "success": true, "message": " Order Cancelled successfully and price refunded" });
-
-                    return
-                }
-                else {
-
-                    res.status(500).json({ "success": false, "message": " Order Cancelled successfully but failed to refund the price contact customer support" });
-
-                    return
-                }
-
-
-
-            } else {
-
-                res.status(500).json({ "success": false, "message": "server while trying to cancel the order" });
-
-                return;
-            }
-
-
-        }
-        else {
-            res.status(500).json({ "success": false, "message": "server while trying to cancel the order" });
-        }
     }
 
 
     catch (err) {
 
-        res.status(500).json({ "success": false, "message": "server facing issues try again " })
+        return res.status(500).json({ "success": false, "message": "Failed to update the Profile Hint: server facing issues !" })
 
-        return;
     }
 }
 
-const razorPayCreateOrder = async (req, res, next) => {
 
-    try {
 
-        if (!req.session.userID) {
 
-            res.status(401).json({ 'success': false, "message": 'session timeout login to continue purchasing' });
-
-            return;
-        }
-
-        const orderID = req.params.orderID;
-
-        const userID = req.session.userID;
-
-        const orderData = await Order.findById(orderID);
-
-        if (!orderData) {
-
-            res.status(500).json({ 'success': false, "message": ' server facing issue getting order data' });
-
-            return;
-
-        }
-
-
-        const amount = orderData.finalPrice * 100;
-
-        const receipt = orderData._id.toString();
-
-        const currency = 'INR';
-
-        const options = {
-            amount: amount,
-            currency: currency,
-            receipt: receipt
-        };
-
-        razorpay.orders.create(options, (err, order) => {
-
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ 'success': false, "message": 'server facing issues when creating order' });
-            }
-
-            console.log(order)
-            res.status(200).json({ 'success': true, "message": 'continue', order });
-        });
-
-
-    }
-    catch (err) {
-        console.log(err);
-
-        res.status(500).json({ 'success': false, "message": 'server facing issues when creating order' })
-    }
-}
-
-// !payment Success Handler
-
-const paymentSuccessHandler = async (req, res, next) => {
-
-
-    try {
-
-        const userID = req.session.userID;
-
-        console.log(req.body);
-
-        const { receipt, id } = req.body;
-
-        const orderID = new mongoose.Types.ObjectId(receipt);
-
-        let orderedItems = await Order.aggregate([{
-            $match: {
-                _id: orderID,
-            }
-        }
-
-            , {
-            $project: {
-                'orderItems': 1
-            }
-
-        }, {
-            $lookup: {
-                from: 'orderitems',
-                localField: 'orderItems',
-                foreignField: '_id',
-                as: 'items'
-            }
-        }, {
-            $unwind: '$items'
-        }, {
-            $replaceRoot: {
-                newRoot: '$items'
-            }
-        }, {
-            $project: {
-
-                product: 1,
-                quantity: 1
-            }
-        }, {
-            $project: {
-                _id: 0
-            }
-        }
-        ]).exec();
-
-
-        const updatedOrder = await Order.findByIdAndUpdate(orderID,
-            {
-                $set:
-                {
-                    paymentStatus: 'paid',
-                    orderStatus: 'shipmentProcessing', clientOrderProcessingCompleted: true, razorpayTransactionId: id
-                }
-            });
-
-        console.log('updateOrder', updatedOrder);
-
-        if (updatedOrder instanceof Order) {
-
-
-
-
-
-            const userDataUpdate = await User.findByIdAndUpdate(userID, { $push: { orders: updatedOrder._id } })
-
-            if (userDataUpdate instanceof User) {
-
-                res.status(200).json({ 'success': true, "message": ' order placed successfully' });
-
-                const userCart = await Cart.findOne({ userID: userID });
-
-                const itemsInCart = userCart.items;
-
-                console.log(itemsInCart);
-
-                for (const item of orderedItems) {
-
-                    const updateProductQuantity = await Product.findByIdAndUpdate(item.product, { $inc: { stock: -(item.quantity) } })
-
-                }
-
-
-                const deletedCartItems = await CartItem.deleteMany({ _id: { $in: itemsInCart } });
-
-                if (deletedCartItems.ok && deletedCartItems.n === itemsInCart.length && deletedCartItems.deletedCount === itemsInCart.length) {
-
-                    const updatedCart = await Cart.findByIdAndUpdate(userCart._id, { $set: { items: [] } });
-
-                    if (updatedCart instanceof Cart) {
-                        console.log('successfully removed from the cart');
-                    }
-
-                }
-
-            } else {
-                res.status(500).json({ 'success': false, "message": ' Payment successful but server facing error updating order info contact customer service' })
-            }
-
-
-
-        } else {
-
-            res.status(500).json({ 'success': false, "message": ' Payment successful but server facing error updating order info contact customer service' })
-        }
-
-    }
-    catch (err) {
-
-        console.log(err);
-
-        res.status(500).json({ 'success': false, "message": ' Payment successful but server facing error updating order info contact customer service' })
-    }
-}
-
-// ! render order details page 
-
-const renderOrderDetails = async (req, res, next) => {
-
-    try {
-
-
-        if (!req.session.userID) {
-
-
-            req.session.message = {
-                type: 'danger',
-                message: 'session time out login to got to order details page  !',
-
-            };
-
-            res.redirect('/');
-
-            return;
-        }
-
-        const userID = new mongoose.Types.ObjectId(req.session.userID);
-
-
-        const orderID = new mongoose.Types.ObjectId(req.params.orderID);
-
-        if (!orderID) {
-
-            req.session.message = {
-                type: 'danger',
-                message: 'Failed to Fetch order Details  !',
-
-            };
-
-            res.redirect('/user/orders');
-
-            return;
-        }
-
-
-
-        const orderData = await Order.findById(orderID);
-
-
-        let productsData = await Order.aggregate([{
-            $match: {
-                _id: orderID
-            }
-        }, {
-            $lookup: {
-                from: 'orderitems',
-                localField: 'orderItems',
-                foreignField: '_id',
-                as: 'orderedProducts',
-            }
-        }, {
-            $unwind: "$orderedProducts"
-        }, {
-            $replaceRoot: {
-                newRoot: "$orderedProducts"
-            }
-        }, {
-            $lookup: {
-                from: 'products',
-                localField: 'product',
-                foreignField: '_id',
-                as: 'productInfo'
-
-            }
-        }, {
-            $replaceRoot: {
-                newRoot: {
-                    $mergeObjects: [
-                        { _id: "$_id", userID: "$userID", product: "$product", quantity: "$quantity", totalPrice: "$totalPrice", __v: "$__v" },
-                        { productInfo: { $arrayElemAt: ["$productInfo", 0] } }
-                    ]
-                }
-            }
-        }
-
-        ]).exec();
-
-
-        console.log('\n\n\n' + JSON.stringify(productsData, null, 2) + '\n\n\n');
-
-
-        let address = await Order.aggregate([{
-            $match: {
-                _id: orderID
-            }
-        }, {
-            $lookup: {
-                from: 'addresses',
-                localField: 'shippingAddress',
-                foreignField: '_id',
-                as: 'address',
-            }
-        }, {
-
-            $unwind: "$address"
-        }, {
-
-            $replaceRoot: {
-                newRoot: "$address"
-            }
-        }
-
-        ]).exec();
-
-
-        address = address[0];
-
-        // console.log('\n\n\n' + JSON.stringify(address, null, 2) + '\n\n\n');
-
-
-
-
-        if (orderData && productsData && address) {
-
-
-
-
-
-            res.render('users/orderDetailsPage.ejs', { address, orderData, productsData });
-
-
-
-
-        } else {
-
-            req.session.message = {
-                type: 'danger',
-                message: 'Failed to Fetch order Details  !',
-
-            };
-
-            res.redirect('/user/orders');
-
-            return;
-
-
-        }
-
-    }
-
-    catch (err) {
-
-        console.log(err)
-    }
-}
-
-// ! render invoice page 
-
-const renderInvoicePage = async (req, res, next) => {
-
-    try {
-
-
-
-
-        const orderID = new mongoose.Types.ObjectId(req.params.orderID);
-
-        if (!orderID) {
-
-            req.session.message = {
-                type: 'danger',
-                message: 'Failed to Fetch order Details  !',
-
-            };
-
-            res.redirect('/user/orders');
-
-            return;
-        }
-
-
-
-        const orderData = await Order.findById(orderID);
-
-
-        let productsData = await Order.aggregate([{
-            $match: {
-                _id: orderID
-            }
-        }, {
-            $lookup: {
-                from: 'orderitems',
-                localField: 'orderItems',
-                foreignField: '_id',
-                as: 'orderedProducts',
-            }
-        }, {
-            $unwind: "$orderedProducts"
-        }, {
-            $replaceRoot: {
-                newRoot: "$orderedProducts"
-            }
-        }, {
-            $lookup: {
-                from: 'products',
-                localField: 'product',
-                foreignField: '_id',
-                as: 'productInfo'
-
-            }
-        }, {
-            $replaceRoot: {
-                newRoot: {
-                    $mergeObjects: [
-                        { _id: "$_id", userID: "$userID", product: "$product", quantity: "$quantity", totalPrice: "$totalPrice", __v: "$__v" },
-                        { productInfo: { $arrayElemAt: ["$productInfo", 0] } }
-                    ]
-                }
-            }
-        }
-
-        ]).exec();
-
-
-        console.log('\n\n\n' + JSON.stringify(productsData, null, 2) + '\n\n\n');
-
-
-        let address = await Order.aggregate([{
-            $match: {
-                _id: orderID
-            }
-        }, {
-            $lookup: {
-                from: 'addresses',
-                localField: 'shippingAddress',
-                foreignField: '_id',
-                as: 'address',
-            }
-        }, {
-
-            $unwind: "$address"
-        }, {
-
-            $replaceRoot: {
-                newRoot: "$address"
-            }
-        }
-
-        ]).exec();
-
-
-        address = address[0];
-
-        // console.log('\n\n\n' + JSON.stringify(address, null, 2) + '\n\n\n');
-
-
-        if (orderData && productsData && address) {
-
-
-
-
-
-            res.render('users/invoicePage.ejs', { address, orderData, productsData });
-
-
-
-
-        } else {
-
-            req.session.message = {
-                type: 'danger',
-                message: 'Failed to Fetch order Details  !',
-
-            };
-
-            res.redirect('/user/orders');
-
-            return;
-
-
-        }
-
-    }
-
-    catch (err) {
-
-        console.log(err)
-    }
-}
-
-// ! download sales invoice handler
-
-const downloadInvoice = async (req, res, next) => {
-
-    try {
-
-
-        if (!req.session.userID) {
-
-
-            req.session.message = {
-                type: 'danger',
-                message: 'session time out login to got to render invoice  !',
-
-            };
-
-            res.redirect('/');
-
-            return;
-        }
-
-        let orderID = req.params.orderID;
-
-
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
-
-
-        await page.setViewport({
-            width: 1680,
-            height: 800,
-        });
-
-        await page.goto(`${req.protocol}://${req.get('host')}` + '/user/invoice/' + `${orderID}`, { waitUntil: 'networkidle2' });
-
-
-
-
-
-
-
-
-
-        const date = new Date();
-
-        const pdfn = await page.pdf({
-            path: `${path.join(__dirname, '../public/files/salesReport', date.getTime() + '.pdf')}`,
-            printBackground: true,
-            format: "A4"
-        })
-
-        setTimeout(async () => {
-            await browser.close();
-
-
-            const pdfURL = path.join(__dirname, '../public/files/salesReport', date.getTime() + '.pdf');
-
-
-
-
-            res.download(pdfURL, function (err) {
-
-                if (err) {
-                    console.log(err)
-                }
-            })
-
-
-        }, 1000);
-
-
-
-
-
-    }
-    catch (err) {
-
-        next(err);
-    }
-}
 
 module.exports = {
     renderLoginPage,
@@ -1896,16 +1148,9 @@ module.exports = {
     renderResetPasswordPage,
     resetPasswordHandler,
     renderForgotPasswordVerifyOtpPage,
-    addNewDeliveryAddress,
     renderUserProfile,
     renderEditProfilePage,
     editProfileHandler,
     changePasswordHandler,
-    orderPageRender,
-    cancelOrderHandler,
-    razorPayCreateOrder,
-    paymentSuccessHandler,
-    renderOrderDetails,
-    renderInvoicePage,
-    downloadInvoice
+
 }

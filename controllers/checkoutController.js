@@ -11,11 +11,220 @@ const Coupon = require('../models/couponModel');
 const Order = require('../models/orderModel');
 const OrderItem = require('../models/orderItemModel');
 const CartItem = require('../models/cartItemModel');
-const Product = require('../models/productModel')
-
-
+const Product = require('../models/productModel');
 const userVerificationHelper = require('../helpers/userVerificationHelpers');
 
+
+
+// ! render checkout page 
+
+const renderCheckOutPage = async (req, res, next) => {
+
+    try {
+
+        if (!req.session.userID) {
+
+            req.session.message = {
+                type: 'danger',
+                message: 'Login to view your Checkout Page'
+            }
+            return res.redirect('/');
+
+
+        };
+
+        const userID = new mongoose.Types.ObjectId(req.session.userID);
+
+        const Addresses = await User.aggregate([
+            {
+                $match: {
+                    _id: userID
+                }
+            },
+            {
+                $lookup: {
+
+                    from: "addresses",
+                    localField: 'addresses',
+                    foreignField: '_id',
+                    as: 'Addresses'
+                }
+            }, {
+                $unwind: '$Addresses'
+            }, {
+                $replaceRoot: {
+                    newRoot: '$Addresses'
+                }
+            }
+
+        ]).exec()
+
+
+
+        if (!Addresses) {
+
+            req.session.message = {
+                type: 'danger',
+                message: 'Login to view your wishlist'
+            }
+
+
+            return res.redirect('/user/cart');
+
+
+
+        }
+
+        let itemsInCart = await Cart.aggregate([
+            {
+                $match: {
+                    userID: userID,
+                },
+            }, {
+                $lookup: {
+                    from: 'cartitems',
+                    localField: 'items',
+                    foreignField: '_id',
+                    as: 'cartItems',
+                }
+            }, {
+
+                $unwind: "$cartItems"
+
+
+            }, {
+                $replaceRoot: {
+                    newRoot: '$cartItems'
+                }
+            }, {
+                $lookup: {
+                    from: 'products',
+                    localField: 'product',
+                    foreignField: '_id',
+                    as: 'cartProductData'
+
+                }
+            }, {
+                $replaceRoot: {
+                    newRoot: {
+                        $mergeObjects: [
+                            { _id: "$_id", cartID: "$cartID", product: "$product", quantity: "$quantity", price: "$price", __v: "$__v" },
+                            { cartProductData: { $arrayElemAt: ["$cartProductData", 0] } }
+                        ]
+                    }
+                }
+            }, {
+
+                $addFields: {
+
+                    totalPriceOfTheProduct: {
+                        $cond: {
+                            if: { $eq: ['$cartProductData.onOffer', true] },
+                            then: { $multiply: ["$quantity", '$cartProductData.offerPrice'] },
+                            else: { $multiply: ["$quantity", "$price"] },
+                        },
+                    },
+                }
+            },
+
+
+
+        ]).exec()
+
+        let totalPriceOfCart;
+
+
+        if (itemsInCart.length > 0) {
+
+
+            totalPriceOfCart = await Cart.aggregate([
+                {
+                    $match: {
+                        userID: userID,
+                    },
+                }, {
+                    $lookup: {
+                        from: 'cartitems',
+                        localField: 'items',
+                        foreignField: '_id',
+                        as: 'cartItems',
+                    }
+                }, {
+
+                    $unwind: "$cartItems"
+
+
+                }, {
+                    $replaceRoot: {
+                        newRoot: '$cartItems'
+                    }
+                }, {
+                    $lookup: {
+                        from: 'products',
+                        localField: 'product',
+                        foreignField: '_id',
+                        as: 'cartProductData'
+
+                    }
+                }, {
+                    $replaceRoot: {
+                        newRoot: {
+                            $mergeObjects: [
+                                { _id: "$_id", cartID: "$cartID", product: "$product", quantity: "$quantity", price: "$price", __v: "$__v" },
+                                { cartProductData: { $arrayElemAt: ["$cartProductData", 0] } }
+                            ]
+                        }
+                    }
+                },
+
+                {
+
+                    $addFields: {
+
+                        totalPriceOfTheProduct: {
+                            $cond: {
+                                if: { $eq: ['$cartProductData.onOffer', true] },
+                                then: { $multiply: ["$quantity", '$cartProductData.offerPrice'] },
+                                else: { $multiply: ["$quantity", "$price"] },
+                            },
+                        },
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalAmount: { $sum: "$totalPriceOfTheProduct" }
+                    }
+                }
+
+
+
+            ]).exec()
+
+
+
+            totalPriceOfCart = totalPriceOfCart[0].totalAmount;
+
+        }
+
+
+
+
+
+
+        return res.render('users/checkout.ejs', { Addresses, itemsInCart, totalPriceOfCart });
+
+
+
+    }
+    catch (err) {
+        next(err);
+    }
+
+
+}
+
+// ! coupon verification handler 
 
 const couponVerificationHandler = async (req, res, next) => {
 
@@ -24,9 +233,9 @@ const couponVerificationHandler = async (req, res, next) => {
 
         if (!req.session.userID) {
 
-            res.status(401).json({ "success": false, "message": "Your session timedOut login to access checkout features" })
+            return res.status(401).json({ "success": false, "message": "Your session timedOut login to access checkout features" })
 
-            return;
+
         }
 
         let { couponCode } = req.body;
@@ -35,15 +244,14 @@ const couponVerificationHandler = async (req, res, next) => {
 
         const couponData = await Coupon.findOne({ code: couponCode });
 
-        console.log(couponData);
 
         if (!couponData) {
 
 
 
-            res.status(400).json({ "success": false, "message": "It was an invalid coupon code !" });
+            return res.status(400).json({ "success": false, "message": "It was an invalid coupon code !" });
 
-            return;
+
 
         };
 
@@ -54,23 +262,22 @@ const couponVerificationHandler = async (req, res, next) => {
 
 
         if (currentDate > expirationDate || !couponData.isActive) {
-            res.status(200).json({ "success": false, "message": " The coupon has expired or is inactive !" });
+            return res.status(200).json({ "success": false, "message": " The coupon has expired or is inactive !" });
 
-            return;
+
         }
 
-        res.status(200).json({ "success": true, "message": " It is a valid Coupon !" });
+        return res.status(200).json({ "success": true, "message": " It is a valid Coupon !" });
 
 
 
     }
     catch (err) {
 
-        res.status(500).json({ "success": false, "message": "Failed to verify coupon server facing some issues !" })
+        return res.status(500).json({ "success": false, "message": "Failed to verify coupon server facing some issues !" })
 
     }
 }
-
 
 // ! address selection and coupon applying of order
 
@@ -79,13 +286,12 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
     try {
 
-        console.log('add coupon and items ');
 
         if (!req.session.userID) {
 
-            res.status(401).json({ "success": false, "message": "Your session timedOut login to access checkout page" })
+            return res.status(401).json({ "success": false, "message": "Your session timedOut login to access checkout page" })
 
-            return;
+
         }
 
         const userID = new mongoose.Types.ObjectId(req.session.userID);
@@ -98,7 +304,6 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
         couponCodeApplied = couponCodeApplied.toLowerCase().trim();
 
-        console.log(req.body);
 
         let rateOfCouponDiscount = null;
 
@@ -173,6 +378,7 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
             }, {
 
                 $addFields: {
+
                     totalPriceOfTheProduct: {
                         $cond: {
                             if: { $eq: ['$cartProductData.onOffer', true] },
@@ -255,7 +461,6 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
         ]);
 
-        console.log('category offers \n', categoryOffers);
 
 
         let categoryDiscount = 0;
@@ -269,7 +474,6 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
         }
 
-        console.log('category discount \n', categoryDiscount);
 
 
 
@@ -340,7 +544,7 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
             ]).exec();
 
-            console.log('total\n', totalPriceOfCart)
+
 
 
             totalPriceOfCart = totalPriceOfCart[0].totalAmount;
@@ -408,7 +612,6 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
                     if (savedOrderItem) {
 
-                        console.log(savedOrderItem + " jjj \n \n \n");
 
                         OrderItems.push(savedOrderItem._id);
                     }
@@ -428,14 +631,13 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
 
 
 
-                        console.log('successfully');
 
 
                         let orderID = savedNewOrder._id
 
                         let url = `/user/paymentPage/${orderID}`;
 
-                        res.status(201).json({ "success": true, "message": "created new order ", "url": url })
+                        return res.status(201).json({ "success": true, "message": "created new order ", "url": url })
 
 
 
@@ -474,13 +676,11 @@ const addressCouponAndItemsInputHandler = async (req, res, next) => {
     }
     catch (err) {
 
-        console.log(err);
 
-        res.status(500).json({ "success": false, "message": "Failed to process address and coupon server facing some issues !" })
+        return res.status(500).json({ "success": false, "message": "Failed to process address and coupon server facing some issues !" })
 
     }
 }
-
 
 // ! render payment page 
 
@@ -497,9 +697,9 @@ const renderPaymentPage = async (req, res, next) => {
 
             };
 
-            res.redirect('/');
+            return res.redirect('/');
 
-            return;
+
         }
 
         const userID = new mongoose.Types.ObjectId(req.session.userID);
@@ -515,9 +715,9 @@ const renderPaymentPage = async (req, res, next) => {
 
             };
 
-            res.redirect('/user/checkout');
+            return res.redirect('/user/checkout');
 
-            return;
+
         }
 
 
@@ -533,9 +733,9 @@ const renderPaymentPage = async (req, res, next) => {
 
             };
 
-            res.redirect('/user/checkout');
+            return res.redirect('/user/checkout');
 
-            return;
+
 
         }
 
@@ -578,7 +778,6 @@ const renderPaymentPage = async (req, res, next) => {
         ]).exec();
 
 
-        // console.log('\n\n\n' + JSON.stringify(productsData, null, 2) + '\n\n\n');
 
 
         let address = await Order.aggregate([{
@@ -607,7 +806,6 @@ const renderPaymentPage = async (req, res, next) => {
 
         address = address[0];
 
-        console.log('\n\n\n' + JSON.stringify(address, null, 2) + '\n\n\n');
 
 
 
@@ -686,7 +884,7 @@ const renderPaymentPage = async (req, res, next) => {
 
 
 
-            res.render('users/paymentPage.ejs', { address, orderData, productsData, categoryOffers });
+            return res.render('users/paymentPage.ejs', { address, orderData, productsData, categoryOffers });
 
 
 
@@ -699,9 +897,9 @@ const renderPaymentPage = async (req, res, next) => {
 
             };
 
-            res.redirect('/user/checkout');
+            return res.redirect('/user/checkout');
 
-            return;
+
 
 
         }
@@ -727,12 +925,11 @@ const placeCodOrderHandler = async (req, res, next) => {
 
         if (!req.session.userID) {
 
-            res.status(401).json({ "success": false, "message": "Your session timedOut login to place order" })
+            return res.status(401).json({ "success": false, "message": "Your session timedOut login to place order" })
 
-            return;
+
         }
 
-        console.log(req.body);
 
         const userID = req.session.userID;
 
@@ -777,7 +974,7 @@ const placeCodOrderHandler = async (req, res, next) => {
         }
         ]).exec();
 
-        console.log(orderedItems);
+
 
         if (orderPlaced.matchedCount === 1 && orderPlaced.modifiedCount === 1) {
 
@@ -787,7 +984,6 @@ const placeCodOrderHandler = async (req, res, next) => {
 
             const itemsInCart = userCart.items;
 
-            console.log(itemsInCart);
 
             for (const item of orderedItems) {
 
@@ -802,7 +998,6 @@ const placeCodOrderHandler = async (req, res, next) => {
                 const updatedCart = await Cart.findByIdAndUpdate(userCart._id, { $set: { items: [] } });
 
                 if (updatedCart instanceof Cart) {
-                    console.log('successfully removed from the cart');
                 }
 
             }
@@ -810,13 +1005,13 @@ const placeCodOrderHandler = async (req, res, next) => {
 
 
 
-            res.status(201).json({ "success": true, "message": " New Order placed successfully  !" })
+            return res.status(201).json({ "success": true, "message": " New Order placed successfully  !" })
                 ;
-            return;
+
 
         } else {
 
-            res.status(500).json({ "success": false, "message": "Failed to place order server facing issues try Again !" })
+            return res.status(500).json({ "success": false, "message": "Failed to place order server facing issues try Again !" })
 
         }
 
@@ -826,17 +1021,84 @@ const placeCodOrderHandler = async (req, res, next) => {
 
     catch (err) {
 
-        console.log(err);
 
-        res.status(500).json({ "success": false, "message": "Failed to place order server facing issues try Again !" })
+        return res.status(500).json({ "success": false, "message": "Failed to place order server facing issues try Again !" })
 
 
     }
 }
 
+
+// ! add new delivery address handler
+
+const addNewDeliveryAddress = async (req, res, next) => {
+
+    try {
+
+
+        if (!req.session.userID) {
+
+            return res.status(401).json({ "success": false, "message": "Your session timedOut login to add New Address" })
+
+
+        }
+
+        const userID = req.session.userID;
+
+        let { fullName, country, phone, locality, city, addressLine, state, pinCode } = req.body;
+
+
+        if (!fullName || !country || !phone || !locality || !city || !addressLine || !state || !pinCode) {
+
+            return res.status(400).json({ "success": false, "message": " Failed to create new Address all fields are mandatory  !" })
+        }
+
+        const newAddress = new Address({ userID, fullName, country, phone, locality, city, addressLine, state, pinCode });
+
+        savedAddress = await newAddress.save();
+
+        if (savedAddress instanceof Address) {
+
+            const updatedUser = await User.findByIdAndUpdate(userID, { $push: { addresses: savedAddress._id } });
+
+            if (updatedUser instanceof User) {
+
+                return res.status(201).json({ "success": true, "message": " New Delivery Address Added successfully" })
+            }
+            else {
+
+                return res.status(500).json({ "success": false, "message": " Failed to create new Address . Server facing issues!" })
+            }
+
+        }
+        else {
+
+            return res.status(500).json({ "success": false, "message": " Failed to create new Address . Server facing issues!" })
+
+        }
+
+
+
+
+    }
+    catch (err) {
+        next(err);
+    }
+
+
+}
+
+
+
+
+
+
 module.exports = {
+
+    renderCheckOutPage,
     couponVerificationHandler,
     addressCouponAndItemsInputHandler,
     renderPaymentPage,
-    placeCodOrderHandler
+    placeCodOrderHandler,
+    addNewDeliveryAddress
 };

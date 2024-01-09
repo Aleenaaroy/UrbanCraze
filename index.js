@@ -1,6 +1,8 @@
 // importing libraries and file dependencies 
 const express = require("express");
 const session = require("express-session");
+const morgan = require('morgan');
+
 const dotenv = require('dotenv').config();
 const mongoose = require("mongoose");
 
@@ -9,7 +11,11 @@ const adminRoute = require('./routes/adminRoute');
 const errorHandler = require('./middleware/errorHandling');
 
 // connecting to mongodb database using mongoose
-mongoose.connect(`${process.env.MONGODB_CONN}`)
+
+mongoose.connect(process.env.MONGODB_CONN, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
     .then(() => {
         console.log('connected to mongodb database')
     })
@@ -21,19 +27,28 @@ mongoose.connect(`${process.env.MONGODB_CONN}`)
 // starting the express server application
 const app = express();
 
+// Create a Morgan logger with a specific format
+const logger = morgan('combined');
+
+// Use the logger middleware to log requests
+
+// app.use(logger);
+
+
 
 //initialization of port for listening
 const PORT = process.env.PORT || 3000;
 
 //session initialization
 app.use(session({
-    secret: "secretkey",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false
 }));
 
 
-//using session messages for rendering
+// using session messages for rendering
+
 app.use((req, res, next) => {
     res.locals.message = req.session.message;
     res.locals.userID = req.session.userID;
@@ -42,20 +57,18 @@ app.use((req, res, next) => {
 });
 
 
-//middleware for req data parsing
+// middleware for request data parsing
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use((error, req, res, next) => {
-    if (error instanceof SyntaxError) {
-        // Handle JSON parsing errors
-        console.error('JSON parsing error:', error);
-        res.status(400).json({ error: 'Invalid JSON data' });
-    } else {
-        next(error);
-    }
-});
 
-//middleware for serving static files
+// middleware to check for syntax error causing parsing error
+
+app.use(errorHandler.parsingErrorHandler);
+
+
+// middleware for serving static files
+
 app.use(express.static('public'));
 
 
@@ -85,6 +98,7 @@ app.use('/admin/*', errorHandler.adminPageNotFound);
 app.use('*', errorHandler.userPageNotFound);
 
 //server listening at port for requests
-app.listen(PORT,function(){
-    console.log(`Server is launched at "http://localhost:${PORT}/user/login"`);
+
+app.listen(PORT, function () {
+    console.log("Server is running at PORT:" + PORT);
 });

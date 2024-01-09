@@ -11,7 +11,7 @@
                         <div class="breadcrumb__text">
                             <h4>Profile</h4>
                             <div class="breadcrumb__links">
-                                <a href="./index.html">Home</a>
+                                <a href="/">Home</a>
                                 <span>Profile</span>
                             </div>
                         </div>
@@ -38,7 +38,7 @@
                             <div class=" row m-0 p-0 bg-secondary-soft rounded d-flex ">
 
 
-                                <div style="max-height: 100%;" class="col-4 d-flex justify-content-center  ">
+                                <div style="max-height: 100%;" class=" col-12 col-lg-4 d-flex justify-content-center  ">
 
                                     <% if(user.profileImg){ %>
                                         <img class="" src="/img/profileImages/<%=user.profileImg%>"
@@ -52,7 +52,7 @@
 
                                 </div>
 
-                                <div class=" col-8  g-3 ">
+                                <div class=" col-12 col-lg-8  g-3 ">
 
                                     <div class="row">
 
@@ -135,22 +135,23 @@
                     <div class="row g-3 w-75">
                         <h3 class="my-4 mb-5 mt-5 text-center font-weight-bold">Referral Details</h3>
 
-
-                        <input class="form-control" type="text" disabled value="<%-user.totalReferralReward%>">
+                        <input class="form-control" type="text" disabled value="<% if(user.totalReferralReward > 0 ) {%>
+                            <%-user.totalReferralReward%><%} else {%>0 
+                                
+                                <%}%>
+                            
+                            ">
                         <label for="">Total Referral Rewards</label>
 
 
                         <div class="form-control w-100" style="background-color: #e9ecef;">
                             <% if(user.successfulReferrals && user.successfulReferrals.length> 0){ %>
-                            <% for(let i=0 ; i < user.successfulReferrals.length; i++ ){%>
-                                <%-user.successfulReferrals[i] %>
-
-
-                                    <%}%>
-                                   
-                                    <%} else {%>
-                                        No Successful Referrals
+                                <% for(let i=0 ; i < user.successfulReferrals.length; i++ ){%>
+                                    <%-user.successfulReferrals[i] %>
                                         <%}%>
+                                            <%} else {%>
+                                                No Successful Referrals
+                                                <%}%>
 
 
                         </div>

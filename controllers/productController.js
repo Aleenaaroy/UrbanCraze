@@ -5,7 +5,8 @@ const Product = require('../models/productModel');
 const Category = require('../models/categoryModel');
 const WishList = require('../models/wishListModel');
 const Address = require('../models/addressModel');
-const Cart = require('../models/cartModel')
+const Banner = require('../models/bannerModel');
+const Cart = require('../models/cartModel');
 const { default: mongoose } = require('mongoose');
 
 
@@ -71,7 +72,7 @@ const renderSearchAndBuy = async (req, res, next) => {
 
         const categories = await Category.find({});
 
-        res.render('users/searchAndBuy.ejs', {
+        return res.render('users/searchAndBuy.ejs', {
             categories: categories,
             sortBy, categoryID,
             count,
@@ -85,7 +86,7 @@ const renderSearchAndBuy = async (req, res, next) => {
         });
 
 
-        return;
+
     }
     catch (err) {
         next(err);
@@ -100,19 +101,20 @@ const renderHomePage = async (req, res, next) => {
 
     try {
 
+        const banner = await Banner.findOne({ active: true });
+
         const products = await Product.find()
 
             .limit(8)
             .exec();
 
-        res.render('users/home.ejs', { products });
+        return res.render('users/home.ejs', { products, banner });
 
     }
     catch (err) {
         next(err);
     }
 }
-
 
 //! render product details page 
 
@@ -153,9 +155,7 @@ const renderProductDetailsPage = async (req, res, next) => {
 
         }
 
-        console.log(filterQuery)
 
-        console.log(groupingID + " " + size + " " + color + " ")
 
 
         const product = await Product.findOne(filterQuery).lean();
@@ -175,13 +175,12 @@ const renderProductDetailsPage = async (req, res, next) => {
 
         });
 
-        console.log(product);
 
 
 
-        res.render('users/productDetails.ejs', { product, currentColor: color, currentSize: size, colorList, sizeList, variants, category: CategoryData });
+        return res.render('users/productDetails.ejs', { product, currentColor: color, currentSize: size, colorList, sizeList, variants, category: CategoryData });
 
-        return;
+
     }
     catch (err) {
         next(err);
@@ -189,7 +188,6 @@ const renderProductDetailsPage = async (req, res, next) => {
 
 
 }
-
 
 //! add to wishlist handler
 
@@ -201,9 +199,9 @@ const addToWishListHandler = async (req, res, next) => {
 
         if (!req.session.userID) {
 
-            res.status(401).json({ "success": false, "message": "login to add product to wishlist" })
+            return res.status(401).json({ "success": false, "message": "login to add product to wishlist" })
 
-            return;
+
         }
 
 
@@ -219,7 +217,6 @@ const addToWishListHandler = async (req, res, next) => {
 
         if (!product) {
 
-            console.log("Error finding productData : " + err);
 
             throw new Error();
 
@@ -228,7 +225,6 @@ const addToWishListHandler = async (req, res, next) => {
 
         if (!userData) {
 
-            console.log("Error finding userData : " + err);
 
             throw new Error();
 
@@ -243,7 +239,6 @@ const addToWishListHandler = async (req, res, next) => {
 
             await newWishList.save()
 
-            console.log('new wishlist created for user');
 
             userWishListID = newWishList._id;
 
@@ -256,7 +251,6 @@ const addToWishListHandler = async (req, res, next) => {
 
         if (!userWishListData) {
 
-            console.log("Error : failed to get userWishList data ");
 
 
         }
@@ -280,9 +274,9 @@ const addToWishListHandler = async (req, res, next) => {
 
 
 
-            res.status(400).json({ "success": false, "message": "product already exists wishList!" });
+            return res.status(400).json({ "success": false, "message": "product already exists wishList!" });
 
-            return;
+
 
         }
 
@@ -290,23 +284,21 @@ const addToWishListHandler = async (req, res, next) => {
 
         await WishList.findByIdAndUpdate(userWishListID, { $push: { products: product._id } });
 
-        res.status(201).json({ "success": true, "message": " Product Added to WishList !" });
+        return res.status(201).json({ "success": true, "message": " Product Added to WishList !" });
 
-        return;
+
 
 
     }
     catch (err) {
 
-        console.log(err);
 
-        res.status(500).json({ "success": false, "message": "failed try again Hint: server facing issues !" })
+        return res.status(500).json({ "success": false, "message": "failed try again Hint: server facing issues !" })
 
     }
 
 
 }
-
 
 //! render wishlistPage
 
@@ -321,9 +313,9 @@ const renderWishListPage = async (req, res, next) => {
             type: 'danger',
             message: 'Login to view your wishlist'
         }
-        res.redirect('/');
+        return res.redirect('/');
 
-        return;
+
     }
 
 
@@ -364,7 +356,6 @@ const renderWishListPage = async (req, res, next) => {
 
 
         } catch (error) {
-            console.error(error);
         }
 
         result.forEach((val) => {
@@ -374,9 +365,9 @@ const renderWishListPage = async (req, res, next) => {
 
 
 
-        res.render('users/wishlist.ejs', { products: productsInWishList });
+        return res.render('users/wishlist.ejs', { products: productsInWishList });
 
-        return;
+
 
     }
     catch (err) {
@@ -385,8 +376,6 @@ const renderWishListPage = async (req, res, next) => {
 
 
 }
-
-
 
 // ! remove product from wishList Handler 
 
@@ -401,9 +390,9 @@ const removeFromWishListHandler = async (req, res, next) => {
             type: 'danger',
             message: 'Your session Timed out login to access wishlist'
         }
-        res.redirect('/');
+        return res.redirect('/');
 
-        return;
+
     }
 
 
@@ -421,12 +410,12 @@ const removeFromWishListHandler = async (req, res, next) => {
 
         if (updatedWishList) {
 
-            res.status(201).json({
+            return res.status(201).json({
                 "success": true,
                 "message": "Removed item from wishlist"
             })
         } else {
-            res.status(500).json({
+            return res.status(500).json({
                 "success": true,
                 "message": "failed to remove product from wishlist try again"
             })
@@ -436,7 +425,7 @@ const removeFromWishListHandler = async (req, res, next) => {
     }
     catch (err) {
 
-        res.status(500).json({
+        return res.status(500).json({
             "success": true,
             "message": "failed to remove product from wishlist try again"
         })
@@ -445,215 +434,6 @@ const removeFromWishListHandler = async (req, res, next) => {
 
 }
 
-// ! render checkout page 
-
-const renderCheckOutPage = async (req, res, next) => {
-
-
-
-
-
-    try {
-
-        if (!req.session.userID) {
-
-            req.session.message = {
-                type: 'danger',
-                message: 'Login to view your Checkout Page'
-            }
-            res.redirect('/');
-
-            return;
-        };
-
-        const userID = new mongoose.Types.ObjectId(req.session.userID);
-
-        const Addresses = await User.aggregate([
-            {
-                $match: {
-                    _id: userID
-                }
-            },
-            {
-                $lookup: {
-
-                    from: "addresses",
-                    localField: 'addresses',
-                    foreignField: '_id',
-                    as: 'Addresses'
-                }
-            }, {
-                $unwind: '$Addresses'
-            }, {
-                $replaceRoot: {
-                    newRoot: '$Addresses'
-                }
-            }
-
-        ]).exec()
-
-
-
-        if (!Addresses) {
-
-            req.session.message = {
-                type: 'danger',
-                message: 'Login to view your wishlist'
-            }
-
-
-            res.redirect('/user/cart');
-
-            return;
-
-        }
-
-        let itemsInCart = await Cart.aggregate([
-            {
-                $match: {
-                    userID: userID,
-                },
-            }, {
-                $lookup: {
-                    from: 'cartitems',
-                    localField: 'items',
-                    foreignField: '_id',
-                    as: 'cartItems',
-                }
-            }, {
-
-                $unwind: "$cartItems"
-
-
-            }, {
-                $replaceRoot: {
-                    newRoot: '$cartItems'
-                }
-            }, {
-                $lookup: {
-                    from: 'products',
-                    localField: 'product',
-                    foreignField: '_id',
-                    as: 'cartProductData'
-
-                }
-            }, {
-                $replaceRoot: {
-                    newRoot: {
-                        $mergeObjects: [
-                            { _id: "$_id", cartID: "$cartID", product: "$product", quantity: "$quantity", price: "$price", __v: "$__v" },
-                            { cartProductData: { $arrayElemAt: ["$cartProductData", 0] } }
-                        ]
-                    }
-                }
-            }, {
-
-                $addFields: {
-                    totalPriceOfTheProduct: {
-                        $cond: {
-                            if: { $eq: ['$cartProductData.onOffer', true] },
-                            then: { $multiply: ["$quantity", '$cartProductData.offerPrice'] },
-                            else: { $multiply: ["$quantity", "$price"] },
-                        },
-                    },
-                }
-            },
-
-
-
-        ]).exec()
-
-        let totalPriceOfCart;
-
-
-        if (itemsInCart.length > 0) {
-
-
-            totalPriceOfCart = await Cart.aggregate([
-                {
-                    $match: {
-                        userID: userID,
-                    },
-                }, {
-                    $lookup: {
-                        from: 'cartitems',
-                        localField: 'items',
-                        foreignField: '_id',
-                        as: 'cartItems',
-                    }
-                }, {
-
-                    $unwind: "$cartItems"
-
-
-                }, {
-                    $replaceRoot: {
-                        newRoot: '$cartItems'
-                    }
-                }, {
-                    $lookup: {
-                        from: 'products',
-                        localField: 'product',
-                        foreignField: '_id',
-                        as: 'cartProductData'
-
-                    }
-                }, {
-                    $replaceRoot: {
-                        newRoot: {
-                            $mergeObjects: [
-                                { _id: "$_id", cartID: "$cartID", product: "$product", quantity: "$quantity", price: "$price", __v: "$__v" },
-                                { cartProductData: { $arrayElemAt: ["$cartProductData", 0] } }
-                            ]
-                        }
-                    }
-                },
-
-                {
-
-                    $addFields: {
-                        totalPriceOfTheProduct: {
-                            $cond: {
-                                if: { $eq: ['$cartProductData.onOffer', true] },
-                                then: { $multiply: ["$quantity", '$cartProductData.offerPrice'] },
-                                else: { $multiply: ["$quantity", "$price"] },
-                            },
-                        },
-                    }
-                },
-                {
-                    $group: {
-                        _id: null,
-                        totalAmount: { $sum: "$totalPriceOfTheProduct" }
-                    }
-                }
-
-
-
-            ]).exec()
-
-
-            console.log('itemsInCart\n\n', totalPriceOfCart);
-
-            totalPriceOfCart = totalPriceOfCart[0].totalAmount;
-
-        }
-
-
-
-
-
-        res.render('users/checkout.ejs', { Addresses, itemsInCart, totalPriceOfCart });
-
-        return;
-
-    }
-    catch (err) {
-        next(err);
-    }
-
-
-}
 
 module.exports = {
     renderSearchAndBuy,
@@ -661,6 +441,5 @@ module.exports = {
     addToWishListHandler,
     renderWishListPage,
     removeFromWishListHandler,
-    renderCheckOutPage,
     renderHomePage
 }

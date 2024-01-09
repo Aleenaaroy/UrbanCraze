@@ -11,7 +11,7 @@
                         <div class="breadcrumb__text">
                             <h4>Coupon List</h4>
                             <div class="breadcrumb__links">
-                                <a href="./index.html">Home</a>
+                                <a href="/admin/dashboard">Home</a>
                                 <span>Coupon List</span>
                             </div>
                         </div>
@@ -22,7 +22,7 @@
 
 
         <main class="main my-5">
-            <div class="container">
+            <div class="container-lg">
 
                 <a class="btn btn-outline-success mb-3" href="/admin/addCoupon">Add Coupon</a>
 
@@ -65,7 +65,7 @@
                         </thead>
                         <tbody>
 
-                            <% if(coupons.length>0){ %>
+                            <% if(coupons && coupons.length>0){ %>
                                 <% for(let i=0; i < coupons.length ;i++) { %>
 
 
