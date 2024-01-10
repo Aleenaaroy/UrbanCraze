@@ -83,34 +83,29 @@
                                                 <%=shortDate %>
 
                                         </td>
+                                        
                                         <td data-title="Email">
-
                                             <ul>
-                                                <%if(orders[i].orderedItems && orders[i].orderedItems.length> 0){%>
-                                                    <% for(let j=0 ; j< orders[i].orderedItems.length ; j++ ){%>
-
-                                                    <li class="text-uppercase list-unstyled mt-3 ">
-                                                        <%=orders[i].orderedItems[j].productInfo[0].name%> (
-                                                            <%=orders[i].orderedItems[j].quantity%>
-                                                                )
-                                                    </li>
-
-
-                                                        <% }%>
-                                                            <%}%>
-
-
-
-
+                                                <% try { %>
+                                                    <% if (orders[i].orderedItems && orders[i].orderedItems.length > 0) { %>
+                                                        <% for (let j = 0; j < orders[i].orderedItems.length; j++) { %>
+                                                            <li class="text-uppercase list-unstyled mt-3">
+                                                                <%= orders[i].orderedItems[j].productInfo[0].name %> (
+                                                                <%= orders[i].orderedItems[j].quantity %>)
+                                                            </li>
+                                                        <% } %>
+                                                    <% } %>
+                                                <% } catch (error) { %>
+                                                    <li>Error rendering orderedItems: <%= error.message %></li>
+                                                <% } %>
                                             </ul>
-
-
                                         </td>
+                                        
 
                                         <td data-title="Name">
 
                                             <% if(orders[i].orderStatus==='shipmentProcessing' ){%>
-                                                SP
+                                                shipmentProcessing
                                                 <%} else {%>
 
                                                     <%=orders[i].orderStatus%>
