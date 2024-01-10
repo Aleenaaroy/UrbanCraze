@@ -194,6 +194,8 @@ router.get('/user/invoice/download/:orderID', ordersController.downloadInvoice)
 
 router.use(errorHandler.userErrorHandler);
 
+// ! render contact page
+router.get('/user/contactUs',userController.renderContactPage);
 
 // ! exporting the user routes
 

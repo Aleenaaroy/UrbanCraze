@@ -1127,7 +1127,20 @@ const changePasswordHandler = async (req, res, next) => {
     }
 }
 
+//!ContactUs page render
 
+const renderContactPage = (req, res, next) => {
+    
+    try {
+        return res.render('users/contactUs.ejs');
+
+    }
+    catch (err) {
+        next(err);
+    }
+
+
+};
 
 
 
@@ -1152,5 +1165,5 @@ module.exports = {
     renderEditProfilePage,
     editProfileHandler,
     changePasswordHandler,
-
+    renderContactPage
 }

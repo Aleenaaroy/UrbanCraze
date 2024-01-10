@@ -58,7 +58,7 @@
                                                     <div class="card-body">
                                                         <div class="row">
                                                             <div class="col-md-3 d-flex justify-content-center">
-                                                                <img src="/img/productImages/<%=orders[i].orderedItems[j].productInfo.images.find((img)=>{
+                                                                <img src="/img/productImages/<%=orders[i].orderedItems[j].productInfo.images?.find((img)=>{
                                                                     return img.toLowerCase().includes('mainimg')
                                                                 }) %> " class="img-thumbnail" alt="Phone"
                                                                                 style="height: 100px; width: 85px; object-fit: contain;">

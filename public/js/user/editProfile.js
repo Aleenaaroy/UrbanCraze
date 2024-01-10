@@ -83,6 +83,10 @@ form.addEventListener("submit", function (event) {
 
     formData.append('profileImg', blob, 'cropped.jpg');
 
+    }
+
+
+
 
 
     console.log(formData)

@@ -1012,7 +1012,7 @@ const renderOrdersPage = async (req, res, next) => {
         }]);
 
 
-
+console.log(orders);
         return res.render('admin/orderList.ejs', { orders });
 
 

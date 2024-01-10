@@ -602,7 +602,7 @@ const renderOrderDetails = async (req, res, next) => {
         ]).exec();
 
 
-
+console.log(productsData);
 
         let address = await Order.aggregate([{
             $match: {
