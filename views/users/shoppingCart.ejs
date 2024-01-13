@@ -1,0 +1,208 @@
+<%- include('../layouts/header.ejs') %>
+
+    <%- include('../users/userHeader.ejs') %>
+
+        <body class="goto-here " data-aos-easing="slide" data-aos-duration="800" data-aos-delay="0">
+
+
+            <!-- Breadcrumb Section Begin -->
+            <section class="breadcrumb-option">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="breadcrumb__text">
+                                <h4>Shopping Cart</h4>
+                                <div class="breadcrumb__links">
+                                    <a href="/">Home</a>
+                                    <span>Shopping Cart</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+
+            <div class="hero-wrap hero-bread ">
+                <div class="container">
+                    <div class="row no-gutters slider-text align-items-center justify-content-center">
+                        <div class="col-md-9 ftco-animate text-center fadeInUp ftco-animated">
+
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <section class="ftco-section ftco-cart mb-5 " style="min-height: 100vh;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-12 ftco-animate fadeInUp ftco-animated">
+                            <div class="cart-list">
+
+
+                                <% if(itemsInCart && itemsInCart.length>0){ %>
+
+                                    <div class="mt-4">
+                                        <% for(let i=0; i<itemsInCart.length; i++) { %>
+
+                                            <div class="card shadow-0 border mb-4" data-id="<%=itemsInCart[i]._id %>">
+                                                <div class="card-body">
+                                                    <div class="row">
+
+
+
+
+                                                        <div class="col-md-2 d-flex justify-content-center">
+
+                                                            <img src="/img/productImages/<%=itemsInCart[i].cartProductData.images?.find((img)=>{
+                                                                        return img.toLowerCase().includes('mainimg')
+                                                                    }) %>" alt="" class="img-thumbnail mt-2"
+                                                                style="height: 140px;">
+
+                                                        </div>
+                                                        <div
+                                                            class="col-md-2 text-center d-flex justify-content-center align-items-center">
+
+                                                            <p>
+                                                                <%=itemsInCart[i].cartProductData.name%>
+                                                            </p>
+
+
+
+                                                        </div>
+                                                        <div
+                                                            class="col-md-2 text-center d-flex justify-content-center align-items-center">
+
+
+                                                            <p>
+                                                                <%=itemsInCart[i].cartProductData.size%>
+                                                            </p>
+
+                                                        </div>
+
+
+                                                        <div
+                                                            class="col-md-2 text-center d-flex justify-content-center align-items-center">
+                                                            <% if(itemsInCart[i].cartProductData.onOffer &&
+                                                                itemsInCart[i].cartProductData.rateOfDiscount>0){ %>
+
+
+                                                            <p>
+                                                                <%=itemsInCart[i].cartProductData.offerPrice%>
+                                                            </p>
+
+                                                            <%} else {%>
+
+                                                                <p>
+                                                                    <%=itemsInCart[i].cartProductData.price%>
+                                                                </p>
+
+                                                                    <%}%>
+
+                                                        </div>
+                                                        <div
+                                                            class="col-md-2 text-center d-flex justify-content-center align-items-center">
+
+
+
+
+                                                            <div class="d-flex justify-content-center">
+                                                                <button reduceBtn-id="<%=itemsInCart[i]._id %>"
+                                                                    onclick="reduceOneFromCart('<%=itemsInCart[i]._id %>')"
+                                                                    style="height: 25px;"
+                                                                    class="d-flex align-items-center" <%
+                                                                    if(itemsInCart[i].quantity <=1){ %>
+
+                                                                disabled
+                                                                <% } %>
+
+                                                                    >
+                                                                    <p class="m-0">-</p>
+                                                            </button>
+
+                                                            <p quantity-id="<%=itemsInCart[i]._id %>" class="mx-3">
+                                                                <%=itemsInCart[i].quantity%>
+                                                            </p>
+
+                                                                <button addBtn-id="<%=itemsInCart[i]._id%>"
+                                                                    onclick="addToCart('<%=itemsInCart[i].cartProductData._id%>','<%=itemsInCart[i]._id %>')"
+                                                                    style="height: 25px;"
+                                                                    class="d-flex align-items-center">
+                                                                    <p class='m-0'>+</p>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div
+                                                            class="col-md-2 text-center d-flex justify-content-center align-items-center ">
+
+
+                                                            <button class="btn btn-outline-secondary mb-3  "
+                                                                onclick="removeFromCart('<%=itemsInCart[i]._id %>')"
+                                                                style="font-size: .9rem;">
+
+                                                                <i class="fa-solid fa-trash"
+                                                                    style="color: #030407;"></i>
+                                                                DELETE</button>
+
+
+
+                                                        </div>
+
+
+                                                    </div>
+
+
+
+                                                </div>
+                                            </div>
+
+                                                <% } %>
+
+
+                                    </div>
+
+
+                                    <div class="d-flex justify-content-between px-3">
+
+                                        <p class=" font-weight-bold" style="color: rgb(147, 25, 25);">TOTAL : RS
+                                            <%=grandTotal %>
+                                        </p>
+
+                                        <P>
+                                            <a href="/user/checkout" class="nav-link font-weight-bold"
+                                                style="color: rgb(16, 109, 16);"> PLACE ORDER</a>
+
+                                        </P>
+
+
+                                    </div>
+
+
+
+
+
+                                    <% } else{ %>
+
+                                        <h3 class="mt-5 text-center">No Products In Cart</h3>
+
+                                        <% } %>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+            </section>
+
+
+
+
+
+
+            <%- include('../users/userFooter.ejs') %>
+
+                <script src="/js/user/shoppingCart.js"></script>
+                <%- include('../layouts/footer.ejs') %>

@@ -1,0 +1,128 @@
+<!-- Offcanvas Menu Begin -->
+<div class="offcanvas-menu-overlay"></div>
+<div class="offcanvas-menu-wrapper">
+    <div class="offcanvas__option">
+        <div class="offcanvas__links">
+            <a class="font-weight-bolder text-dark" href="/admin/logout">Logout</a>
+
+        </div>
+
+
+    </div>
+
+    <div id="mobile-menu-wrap"></div>
+    <div class="offcanvas__text">
+        <p></p>
+    </div>
+</div>
+<!-- Offcanvas Menu End -->
+
+<!-- Header Section Begin -->
+<header class="header">
+    <div class="header__top">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6 col-md-7">
+                    <div class="header__top__left">
+
+                    </div>
+                </div>
+                <div class="col-lg-6 col-md-5">
+                    <div class="header__top__right">
+                        <div class="header__top__links">
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-3 col-md-3">
+                <div class="header__logo">
+                    <a href="/admin/dashboard"><img src="/img/logo.png" alt=""></a>
+                </div>
+            </div>
+            <div class="col-lg-7 col-md-6">
+                <nav class="header__menu mobile-menu">
+                    <ul>
+                        <li class=""><a href="/admin/dashboard">Home</a></li>
+                        <li><a href="/admin/usersList">Users</a></li>
+
+
+
+                        <li><a href="#">Product</a>
+                            <ul class="dropdown mt-2 "
+                                style="background-color: #f3f2ee; color: black; border: 1px solid black;">
+
+                                <li><a style="color: black;" href="/admin/productList">Products</a> </li>
+                                <li><a style="color: rgb(4, 4, 4);" href="/admin/categoryList">Categories</a></li>
+                                <li><a style="color: rgb(4, 4, 4);" href="/admin/orders">Orders</a></li>
+                                <li><a style="color: rgb(4, 4, 4);" href="/admin/salesReport">Sales Report</a></li>
+
+                            </ul>
+                        </li>
+
+
+
+
+                        <li><a href="#">Pages </a>
+                            <ul class="dropdown mt-2 "
+                                style="background-color: #f3f2ee; color: black; border: 1px solid black;">
+
+                                <li><a style="color: rgb(4, 4, 4);" href="/admin/couponList">Coupons</a></li>
+
+
+                                <li><a style="color: rgb(4, 4, 4);" href="/admin/productsOffers">Product Offers</a></li>
+
+                                <li><a style="color: rgb(4, 4, 4);" href="/admin/categoryOffers">Category Offers</a>
+                                </li>
+
+                                <li><a style="color: rgb(4, 4, 4);" href="/admin/banner">Banner Management</a>
+                                </li>
+
+                            </ul>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            <div class="col-lg-2 col-md-3">
+                <div class="header__nav__option fs-5">
+
+
+                    <a class="font-weight-bolder text-dark" href="/admin/logout">Logout</a>
+
+                </div>
+            </div>
+        </div>
+        <div class="canvas__open"><i class="fa fa-bars"></i></div>
+    </div>
+</header>
+<!-- Header Section End -->
+
+<% if (message){%>
+
+    <div class=" container alert alert-dismissible fade show alert-<%=message.type %>" role="alert">
+
+        <button class="btn-close" type="button" data-bs-dismiss='alert' aria-label="close"></button>
+
+        <strong>
+
+            <div>
+                <%- message.message %>
+            </div>
+
+        </strong>
+    </div>
+    <% } %>
+
+
+        <div hidden id="notification-message" class="container notification ">
+
+            <p id="messageLine"> </p>
+
+            <button class="close" id="notificationClose"><i class="fa-solid fa-xmark"
+                    style="color: #d2cfce;"></i></button>
+        </div>

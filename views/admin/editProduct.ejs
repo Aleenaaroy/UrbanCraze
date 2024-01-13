@@ -1,0 +1,343 @@
+<%- include('../layouts/header.ejs') %>
+
+    <%- include('../admin/adminHeader.ejs') %>
+
+        <!-- Breadcrumb Section Begin -->
+
+        <section class="breadcrumb-option">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="breadcrumb__text">
+                            <h4>Edit Products</h4>
+                            <div class="breadcrumb__links">
+                                <a href="./index.html">Home</a>
+                                <span>Edit Products</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <main class="main my-5">
+            <div class="container">
+
+                <h2 class="text-center">Enter New Product Details</h2>
+
+                <form class="container  w-50 my-5" id="myForm" product-id="<%=product._id%>">
+
+
+                    <div class="form-outline mb-4">
+                        <input type="text" id="product-name" class="form-control" name="name" required
+                            value="<%= product.name%>" />
+                        <label class="form-label mt-2" for="product-name">Product name </label>
+                    </div>
+
+                    <div class="form-outline mb-4">
+                        <input type="number" id="groupingID" class="form-control" name="groupingID" required
+                            title=" id for grouping product variants" value="<%= product.groupingID %>" />
+                        <label class="form-label mt-2" for="groupingID">Grouping ID </label>
+                    </div>
+
+
+                    <div class="form-outline mb-4 d-flex flex-column ">
+
+                        <select name="category" id="category" required>
+
+                            <% categories.forEach((category)=>{ %>
+
+                                <option value="<%= category._id %>"
+                                    <%=category.name.toLowerCase()===product.category.toLowerCase()? 'selected' :'' %> >
+                                    <%= category.name %>
+                                </option>
+
+                                <%} ) %>
+
+
+
+                        </select>
+
+                        <label class="   mt-2" for="category">Category</label>
+
+                    </div>
+
+
+                    <div class="form-outline mb-4">
+
+                        <input type="text" id="size" class="form-control" name="size" required
+                            value="<%= product.size%>" />
+                        <label class="form-label mt-2" for="size">Size</label>
+
+                    </div>
+
+                    <div class="form-outline mb-4">
+
+                        <input type="text" id="color" class="form-control" name="color" required
+                            value="<%= product.color%>" />
+                        <label class="form-label mt-2" for="color">Color</label>
+
+                    </div>
+
+
+                    <div class="form-outline mb-4">
+
+                        <input type="number" id="price" class="form-control" name="price" required
+                            value="<%= product.price%>" />
+                        <label class="form-label mt-2" for="price">Price</label>
+
+                    </div>
+
+                    <div class="form-outline mb-4">
+                        <input type="number" id="stock" class="form-control" name="stock" required
+                            value="<%= product.stock%>" />
+                        <label class="form-label mt-2" for="stock">Stock no </label>
+                    </div>
+
+
+                    <div class="form-outline mb-4 d-flex flex-column ">
+
+                        <select name="onSale" id="onSale">
+
+
+
+                            <option value="true" <%=product.onSale ? 'selected' :'' %> >
+                                True
+                            </option>
+
+                            <option value="false" <%=product.onSale? '' :' selected' %> >
+                                False
+                            </option>
+
+                        </select>
+
+                        <label class="   mt-2" for="onSale">onSale</label>
+
+                    </div>
+
+                    <div class="form-outline mb-4 d-flex flex-column ">
+
+                        <select name="onOffer" id="onOffer">
+
+
+
+                            <option value="true" <%=product.onOffer ? 'selected' :'' %> >
+                                True
+                            </option>
+
+                            <option value="false" <%=product.onOffer? '' :' selected' %> >
+                                False
+                            </option>
+
+                        </select>
+
+                        <label class="   mt-2" for="onSale">onOffer</label>
+
+                    </div>
+
+                    <div class="form-outline mb-4">
+                        <input type="number" id="rateOfDiscount" class="form-control" name="rateOfDiscount" required
+                            value="<%= product.rateOfDiscount%>" />
+                        <label class="form-label mt-2" for="rateOfDiscount">Rate Of Discount </label>
+                    </div>
+
+                    <div class="form-outline mb-4">
+                        <input type="number" disabled class="form-control" required value="<%= product.offerPrice%>" />
+                        <label class="form-label mt-2" for="offerPrice">Offer Price </label>
+                    </div>
+
+
+
+
+                    <div class="input-group mb-4">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" span-id="mainImg">Upload</span>
+                        </div>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input addProductImg" id="mainImg"
+                                aria-describedby="UPLOADBASICIMG" name="mainImg">
+                            <label class="custom-file-label" for="mainImg"> Main Image </label>
+                        </div>
+                    </div>
+
+                    <div class="input-group mb-4">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" span-id="mainImgThumbnail">Upload</span>
+                        </div>
+                        <div class="custom-file ">
+                            <input type="file" class="custom-file-input addProductImg" id="mainImgThumbnail"
+                                aria-describedby="UPLOADBASICTHUMB" name="mainImgThumbnail">
+                            <label class="custom-file-label" for="mainImgThumbnail"> Main Image Thumbnail </label>
+                        </div>
+                    </div>
+
+                    <!-- second images -->
+
+                    <div class="input-group mb-4">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" span-id="secondImg">Upload</span>
+                        </div>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input addProductImg" id="secondImg"
+                                aria-describedby="secondIMG" name="secondImg">
+                            <label class="custom-file-label" for="secondImg"> Second Image</label>
+                        </div>
+                    </div>
+
+
+                    <div class="input-group mb-4 ">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text " span-id="secondImgThumbnail">Upload</span>
+                        </div>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input addProductImg " id="secondImgThumbnail"
+                                aria-describedby="secondIMGThumbnail" name="secondImgThumbnail">
+                            <label class="custom-file-label" for="secondImgThumbnail">
+                                Second Image Thumbnail</label>
+                        </div>
+                    </div>
+
+                    <!-- third images -->
+
+                    <div class="input-group mb-4">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" span-id="thirdImg">Upload</span>
+                        </div>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input addProductImg" id="thirdImg"
+                                aria-describedby="thirdIMG" name="thirdImg">
+                            <label class="custom-file-label" for="thirdImg"> Third Image</label>
+                        </div>
+                    </div>
+
+
+                    <div class="input-group mb-4">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" span-id="thirdImgThumbnail">Upload</span>
+                        </div>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input addProductImg" id="thirdImgThumbnail"
+                                aria-describedby="thirdIMGThumbnail" name="thirdImgThumbnail">
+                            <label class="custom-file-label" for="thirdImgThumbnail"> Third Image Thumbnail</label>
+                        </div>
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+                    <div class="form-outline mb-2 w-100">
+                        <textarea class=" w-100" style="width: auto;" name="description" id="description"
+                            required><%=product.description%></textarea>
+                        <label class="form-label mt-2" for="description">Description</label>
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    <!-- Submit button -->
+                    <button type="submit" class="btn btn-dark btn-block mb-4"> Edit Product</button>
+
+
+                </form>
+
+
+            </div>
+        </main>
+
+        <div id="modal"
+            style="position: absolute;top:0 ; z-index: 11; height: 100%; width: 100vw; background-color: rgba(0, 0, 0, 0.479);"
+            class="d-flex d-none justify-content-center align-items-center ">
+
+            <div class=" d-flex flex-column justify-content-center"
+                style=" background-color: rgb(255, 255, 255); height: 450px ; width: 50%; ">
+
+                <div style="height: 80%;" class="  d-flex justify-content-center align-items-center ">
+
+                    <img id="cropImg" style="height: 90% ;width:80%;" alt="">
+
+                </div>
+
+                <div class="d-flex  justify-content-center ">
+                    <button id="cropBtn" class="nav-link mt-4 mb-4"
+                        style="background-color: black; color:whitesmoke ;padding :10px"> CROP THE
+                        IMG</button>
+
+                </div>
+
+
+
+
+
+            </div>
+        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <%- include('../admin/adminFooter.ejs') %>
+
+            <script src="/js/admin/editProduct.js"></script>
+
+            <%- include('../layouts/footer.ejs') %>
