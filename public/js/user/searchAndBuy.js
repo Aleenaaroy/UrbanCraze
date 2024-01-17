@@ -112,7 +112,9 @@ function addToWishList(id) {
 
     console.log(WishListData);
 
-    fetch('http://localhost:3000/user/addToWishList', {
+    const currentURL = window.location.origin;
+
+    fetch(currentURL + '/user/addToWishList', {
 
         method: 'POST',
         headers: {
@@ -204,9 +206,11 @@ function addToCart(id) {
 
     let cartData = { productID, quantity };
 
-    console.log(cartData)
+    console.log(cartData);
 
-    fetch('http://localhost:3000/user/addToCart', {
+    const currentURL = window.location.origin;
+
+    fetch(currentURL + '/user/addToCart', {
 
         method: 'POST',
         headers: {

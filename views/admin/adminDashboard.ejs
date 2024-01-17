@@ -416,8 +416,9 @@
 
 
                 function updateData() {
+                    const currentURL = window.location.origin;
 
-                    fetch(`http://localhost:3000/admin/chart?salesChart=${salesTimeBase}&orderChart=${orderChartTimeBase}&orderType=${orderTypeChartTimeBase}&categoryChart=${CategoryChartTimeBase}`, {
+                    fetch(currentURL + `/admin/chart?salesChart=${salesTimeBase}&orderChart=${orderChartTimeBase}&orderType=${orderTypeChartTimeBase}&categoryChart=${CategoryChartTimeBase}`, {
 
                         method: 'GET',
 

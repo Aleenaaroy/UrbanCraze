@@ -3,7 +3,9 @@ async function removeFromWishList(id) {
     const productData = { productID: id };
 
 
-    fetch('http://localhost:3000/user/wishList', {
+    const currentURL = window.location.origin;
+
+    fetch(currentURL + '/user/wishList', {
 
         method: 'DELETE',
         headers: {
@@ -104,7 +106,9 @@ function addToCart(id) {
 
     console.log(cartData);
 
-    fetch('http://aleenaaroy-1.xyz:3000/user/addToCart', {
+    const currentURL = window.location.origin;
+
+    fetch(currentURL + '/user/addToCart', {
 
         method: 'POST',
         headers: {
@@ -198,7 +202,9 @@ function addToCart(id) {
 
 //     console.log(cartData)
 
-//     fetch('http://localhost:3000/user/addToCart', {
+const currentURL = window.location.origin;
+
+//     fetch( currentURL+'/user/addToCart', {
 
 //         method: 'POST',
 //         headers: {

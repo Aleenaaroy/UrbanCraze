@@ -6,8 +6,8 @@ const orderID = placeCODorder.getAttribute('order-id');
 placeCODorder.addEventListener('click', (e) => {
 
     const orderData = { orderID };
-
-    fetch('http://localhost:3000/user/placeOrder/cod', {
+    const currentURL = window.location.origin;
+    fetch(currentURL + '/user/placeOrder/cod', {
 
         method: 'POST',
         headers: {

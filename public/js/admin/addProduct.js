@@ -120,9 +120,9 @@ form.addEventListener('submit', function (event) {
     }
 
     console.log(formData);
+    const currentURL = window.location.origin;
 
-
-    fetch('http://localhost:3000/admin/addProduct', {
+    fetch(currentURL + '/admin/addProduct', {
         method: 'POST',
 
         body: formData,
