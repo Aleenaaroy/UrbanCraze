@@ -104,7 +104,7 @@ function addToCart(id) {
 
     console.log(cartData);
 
-    fetch('http://localhost:3000/user/addToCart', {
+    fetch('http://aleenaaroy-1.xyz:3000/user/addToCart', {
 
         method: 'POST',
         headers: {
