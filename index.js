@@ -37,7 +37,7 @@ const logger = morgan('combined');
 
 
 //initialization of port for listening
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8001;
 
 //session initialization
 app.use(session({
